@@ -10,6 +10,10 @@ web-build/
 expo-env.d.ts
 
 .env
+ios/
+android/
+package-lock.json
+Todo.md
 
 # Native
 .kotlin/

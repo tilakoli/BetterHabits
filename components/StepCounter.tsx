@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, AppState, Ap
 import { Pedometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
+import GoogleFit, { Scopes, BucketUnit } from 'react-native-google-fit';
 import ProgressCircle from './ProgressCircle';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from './useColorScheme';
@@ -14,6 +15,10 @@ interface StepCounterProps {
   challengeId: string;
   isActive: boolean;
   onToggle: (isActive: boolean) => void;
+}
+
+interface GoogleFitSubscription {
+  remove: () => void;
 }
 
 const StepCounter: React.FC<StepCounterProps> = ({ 
@@ -28,8 +33,9 @@ const StepCounter: React.FC<StepCounterProps> = ({
   const [error, setError] = useState<string | null>(null);
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
-  const subscription = useRef<any>(null);
+  const subscription = useRef<GoogleFitSubscription | Pedometer.Subscription | null>(null);
   const appState = useRef(AppState.currentState);
+  const updateInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate progress percentage
   const progressPercentage = Math.min((currentSteps / targetSteps) * 100, 100);
@@ -63,57 +69,139 @@ const StepCounter: React.FC<StepCounterProps> = ({
     }
   };
 
-  // Check if pedometer is available
+  // Initialize Google Fit
+  const initializeGoogleFit = async () => {
+    try {
+      const options = {
+        scopes: [
+          Scopes.FITNESS_ACTIVITY_READ,
+          Scopes.FITNESS_ACTIVITY_WRITE,
+          Scopes.FITNESS_BODY_READ,
+          Scopes.FITNESS_BODY_WRITE,
+        ],
+      };
+
+      const authResult = await GoogleFit.authorize(options);
+      
+      if (authResult.success) {
+        setIsPedometerAvailable(true);
+        // @ts-ignore
+        await GoogleFit.startRecording([{
+          dataType: 'step_count',
+          dataSource: 'step_count_delta',
+        }], () => {
+          console.log('Step recording started successfully');
+        });
+      } else {
+        setError('Failed to authorize Google Fit');
+        setIsPedometerAvailable(false);
+      }
+    } catch (error) {
+      console.error('Google Fit initialization error:', error);
+      setError('Failed to initialize step tracking');
+      setIsPedometerAvailable(false);
+    }
+  };
+
+  // Check if step counting is available
   const checkPedometerAvailability = async () => {
     try {
-      const result = await Pedometer.isAvailableAsync();
-      setIsPedometerAvailable(result);
-      if (!result) {
-        setError('Pedometer is not available on this device');
+      if (Platform.OS === 'ios') {
+        const result = await Pedometer.isAvailableAsync();
+        setIsPedometerAvailable(result);
+        if (!result) {
+          setError('Pedometer is not available on this device');
+        }
+      } else {
+        // For Android, initialize Google Fit
+        await initializeGoogleFit();
       }
     } catch (e) {
-      setError('Error checking pedometer availability');
+      setError('Error checking step counter availability');
       console.error(e);
+    }
+  };
+
+  // Get steps from Google Fit
+  const getGoogleFitSteps = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      const options = {
+        startDate: today.toISOString(),
+        endDate: now.toISOString(),
+        bucketUnit: BucketUnit.DAY,
+        bucketInterval: 1
+      };
+
+      const dailySteps = await GoogleFit.getDailyStepCountSamples(options);
+      
+      if (dailySteps && dailySteps.length > 0) {
+        // Get steps from the estimated steps source
+        const estimatedSteps = dailySteps.find(
+          source => source.source === 'com.google.android.gms:estimated_steps'
+        );
+
+        if (estimatedSteps && estimatedSteps.steps && estimatedSteps.steps.length > 0) {
+          const steps = estimatedSteps.steps[0].value;
+          setCurrentSteps(steps);
+          if (onStepCountChange) {
+            onStepCountChange(steps);
+          }
+          await saveSteps(steps);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting steps from Google Fit:', error);
     }
   };
 
   // Start tracking steps
   const startTracking = async () => {
     if (!isPedometerAvailable) {
-      Alert.alert('Not Available', 'Pedometer is not available on this device');
+      Alert.alert('Not Available', 'Step counter is not available on this device');
       return;
     }
 
     try {
-      // Get start of today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Subscribe to pedometer updates
-      subscription.current = Pedometer.watchStepCount(result => {
-        const steps = result.steps;
-        setCurrentSteps(prevSteps => {
-          const newSteps = Math.max(steps, prevSteps);
-          if (onStepCountChange) {
-            onStepCountChange(newSteps);
-          }
-          saveSteps(newSteps);
-          return newSteps;
+      if (Platform.OS === 'ios') {
+        // iOS implementation using Pedometer
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        subscription.current = Pedometer.watchStepCount(result => {
+          const steps = result.steps;
+          setCurrentSteps(prevSteps => {
+            const newSteps = Math.max(steps, prevSteps);
+            if (onStepCountChange) {
+              onStepCountChange(newSteps);
+            }
+            saveSteps(newSteps);
+            return newSteps;
+          });
         });
-      });
-      
-      // Also get steps since midnight
-      const pastStepCountResult = await Pedometer.getStepCountAsync(today, new Date());
-      if (pastStepCountResult) {
-        const steps = pastStepCountResult.steps;
-        setCurrentSteps(prevSteps => {
-          const newSteps = Math.max(steps, prevSteps);
-          if (onStepCountChange) {
-            onStepCountChange(newSteps);
-          }
-          saveSteps(newSteps);
-          return newSteps;
-        });
+        
+        const pastStepCountResult = await Pedometer.getStepCountAsync(today, new Date());
+        if (pastStepCountResult) {
+          const steps = pastStepCountResult.steps;
+          setCurrentSteps(prevSteps => {
+            const newSteps = Math.max(steps, prevSteps);
+            if (onStepCountChange) {
+              onStepCountChange(newSteps);
+            }
+            saveSteps(newSteps);
+            return newSteps;
+          });
+        }
+      } else {
+        // Android implementation using Google Fit
+        await getGoogleFitSteps(); // Get initial steps
+        
+        // Update steps every minute using setInterval
+        const interval = setInterval(getGoogleFitSteps, 60000);
+        updateInterval.current = interval as unknown as NodeJS.Timeout;
       }
     } catch (e) {
       setError('Failed to start step counter');
@@ -123,9 +211,17 @@ const StepCounter: React.FC<StepCounterProps> = ({
 
   // Stop tracking steps
   const stopTracking = () => {
-    if (subscription.current) {
-      subscription.current.remove();
-      subscription.current = null;
+    if (Platform.OS === 'ios') {
+      if (subscription.current) {
+        subscription.current.remove();
+        subscription.current = null;
+      }
+    } else {
+      // Clear the update interval for Android
+      if (updateInterval.current) {
+        clearInterval(updateInterval.current);
+        updateInterval.current = null;
+      }
     }
   };
 
@@ -143,11 +239,9 @@ const StepCounter: React.FC<StepCounterProps> = ({
   // Handle app state changes
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (appState.current.match(/inactive|background/) && nextAppState === 'active' && isActive) {
-      // App has come to the foreground and tracking is active
       loadSavedSteps();
       startTracking();
     } else if (nextAppState.match(/inactive|background/) && isActive) {
-      // App is going to the background but tracking is active
       stopTracking();
     }
     appState.current = nextAppState;
@@ -158,18 +252,15 @@ const StepCounter: React.FC<StepCounterProps> = ({
     checkPedometerAvailability();
     loadSavedSteps();
     
-    // Set up app state change listener
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
     
-    // Start tracking if active
     if (isActive && isPedometerAvailable) {
       startTracking();
     }
     
-    // Clean up on unmount
     return () => {
       stopTracking();
-      subscription.remove();
+      appStateSubscription.remove();
     };
   }, [isPedometerAvailable]);
 
@@ -230,9 +321,9 @@ const StepCounter: React.FC<StepCounterProps> = ({
         </Text>
       </TouchableOpacity>
       
-      {!isPedometerAvailable && (
+      {Platform.OS === 'android' && !isPedometerAvailable && (
         <Text style={styles.notAvailableText}>
-          Pedometer is not available on this device
+          Please authorize Google Fit to track your steps
         </Text>
       )}
     </View>
@@ -250,10 +341,9 @@ const styles = StyleSheet.create({
   },
   stepsContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   stepsCount: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
   },
   stepsLabel: {
@@ -263,30 +353,27 @@ const styles = StyleSheet.create({
   targetLabel: {
     fontSize: 14,
     marginTop: 4,
-    color: '#666',
   },
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 30,
     marginTop: 20,
-    width: '80%',
   },
   buttonIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
   },
   errorContainer: {
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   errorText: {
     color: '#E74C3C',
@@ -294,8 +381,9 @@ const styles = StyleSheet.create({
   },
   notAvailableText: {
     marginTop: 16,
-    color: '#E74C3C',
+    color: '#666',
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
 
