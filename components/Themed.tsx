@@ -11,6 +11,7 @@ import { useColorScheme } from './useColorScheme';
 type ThemeProps = {
   lightColor?: string;
   darkColor?: string;
+  transparentBackground?: boolean;
 };
 
 export type TextProps = ThemeProps & DefaultText['props'];
@@ -38,8 +39,32 @@ export function Text(props: TextProps) {
 }
 
 export function View(props: ViewProps) {
-  const { style, lightColor, darkColor, ...otherProps } = props;
-  const backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'background');
+  const { style, lightColor, darkColor, transparentBackground, ...otherProps } = props;
+  
+  let backgroundColor;
+  if (transparentBackground) {
+    backgroundColor = 'transparent';
+  } else {
+    backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'background');
+  }
 
   return <DefaultView style={[{ backgroundColor }, style]} {...otherProps} />;
+}
+
+export function Card(props: ViewProps) {
+  const { style, lightColor, darkColor, transparentBackground, ...otherProps } = props;
+  
+  let backgroundColor;
+  if (transparentBackground) {
+    backgroundColor = 'transparent';
+  } else {
+    backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'card');
+  }
+
+  return <DefaultView style={[{ backgroundColor }, style]} {...otherProps} />;
+}
+
+export function TransparentView(props: Omit<ViewProps, 'transparentBackground'>) {
+  const { style, ...otherProps } = props;
+  return <DefaultView style={[{ backgroundColor: 'transparent' }, style]} {...otherProps} />;
 }
