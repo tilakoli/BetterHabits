@@ -39,8 +39,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "4d8c54fd-60cd-4fc9-9cf5-a3fdc69c905b"
+        "projectId": "fdb6a078-99c9-4a44-9137-22ddbef673be"
       }
-    }
+    },
+    "owner": "kagami14"
   }
 }

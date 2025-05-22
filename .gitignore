@@ -10,9 +10,14 @@ web-build/
 expo-env.d.ts
 
 .env
+
 ios/
 android/
+
 package-lock.json
+bun.lock
+yarn.lock
+
 Todo.md
 
 # Native

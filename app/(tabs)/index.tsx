@@ -22,12 +22,21 @@ export default function HomeScreen() {
   const [greeting, setGreeting] = useState(getGreeting());
   const [quote, setQuote] = useState(getRandomMotivationalQuote());
   const [streakCount, setStreakCount] = useState(5); // Mock streak count
+  const Quotations = [
+    "The only way to do great work is to love what you do.",
+    "Believe you can and you're halfway there.",
+    "Success is not the key to happiness. Happiness is the key to success. If you love what you are doing, you will be successful.",
+    "The only limit to our realization of tomorrow will be our doubts of today.",
+    "The best way to predict the future is to invent it.",
+  ]
   
-  // Update greeting based on time of day
   useEffect(() => {
     const timer = setInterval(() => {
       setGreeting(getGreeting());
-    }, 60000); // Update every minute
+       for (let i = 0;  i < Quotations.length; i ++) {
+        setQuote(Quotations[i]);
+       }
+    }, 4000); 
     
     return () => clearInterval(timer);
   }, []);
@@ -67,15 +76,15 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.habitsList}>
-          {habits.length > 0 ? (
+          {habits.length > 0 && 
             habits.map(habit => (
               <HabitCard 
                 key={habit.id}
                 habit={habit}
                 onComplete={() => handleCompleteHabit(habit.id)}
               />
-            ))
-          ) : (
+            ))}
+          {/* ) : (
             <View style={styles.emptyStateContainer}>
               <FontAwesome name="calendar-plus-o" size={60} color={colors.primary} />
               <Text style={styles.emptyStateText}>
@@ -88,9 +97,10 @@ export default function HomeScreen() {
                 <Text style={styles.emptyStateButtonText}>Create Your First Habit</Text>
               </TouchableOpacity>
             </View>
-          )}
+          )} */}
         </View>
 
+        <View style={styles.challengeButtonContainer}>
         <TouchableOpacity 
           style={[styles.challengeButton, { backgroundColor: colors.primary }]}
           onPress={navigateToNewChallenge}
@@ -98,6 +108,7 @@ export default function HomeScreen() {
           <FontAwesome name="trophy" size={18} color="white" style={styles.buttonIcon} />
           <Text style={styles.challengeButtonText}>Join New Challenge</Text>
         </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -112,6 +123,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 30,
+    flex: 1
   },
   header: {
     paddingHorizontal: 20,
@@ -177,6 +189,13 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     color: '#666',
     lineHeight: 24,
+  },
+  challengeButtonContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    // backgroundColor: 'red',
+    flex: 1,
+    justifyContent: 'center',
   },
   challengeButton: {
     flexDirection: 'row',
