@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar } from 'react-native';
+import { StyleSheet, TextInput, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/providers/AuthProvider/useAuth';
 import { showAlert } from '@/components/CustomAlert';
+import Button from '@/components/Button';
 
-export default function SignIn() {
+const SignIn = () => {
   const colorScheme = useColorScheme() || 'light';
-  const colors = Colors[colorScheme];
+  const themeColors = Colors[colorScheme as keyof typeof Colors];
   const router = useRouter();
-  const { signIn, isLoading, setIsLoading } = useAuth();
+  const { signIn, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isDevLoading, setIsDevLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -31,14 +30,9 @@ export default function SignIn() {
     }
 
     try {
-      setIsLoading(true);
       const result = await signIn({ email, password });
 
-      if (result.success) {
-        console.log("[SignIn] Login successful, waiting for auth state update");
-        // The auth state will be updated by the auth provider
-        // and the navigation will be handled by RootLayoutNav
-      } else {
+      if (!result.success) {
         showAlert({
           title: 'Error',
           message: result.error || 'Failed to log in',
@@ -46,20 +40,16 @@ export default function SignIn() {
         });
       }
     } catch (error) {
-      console.error("[SignIn] Login error:", error);
       showAlert({
         title: 'Error',
         message: 'An unexpected error occurred',
         type: 'error'
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDevLogin = async () => {
     try {
-      setIsDevLoading(true);
       const result = await signIn({
         email: 'tilak@gmail.com',
         password: 'pass1234!'
@@ -68,7 +58,7 @@ export default function SignIn() {
       if (!result.success) {
         showAlert({
           title: 'Error',
-          message: result.error || 'Failed to sign in',
+          message: result.error || 'Failed to log in with test account',
           type: 'error'
         });
       }
@@ -78,13 +68,7 @@ export default function SignIn() {
         message: 'An unexpected error occurred',
         type: 'error'
       });
-    } finally {
-      setIsDevLoading(false);
     }
-  };
-
-  const navigateToSignUp = () => {
-    router.push('/signUp');
   };
 
   const navigateToForgotPassword = () => {
@@ -95,26 +79,30 @@ export default function SignIn() {
     });
   };
 
+  const navigateToSignUp = () => {
+    router.push('/signUp');
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar backgroundColor={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
         >
-       
-          <View style={styles.formContainer}>
           <View style={styles.headerContainer}>
-            <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Welcome back</Text>
             <Text style={[styles.subtitle, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
               Sign in to continue your journey
             </Text>
           </View>
-            <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
+          <View style={styles.formContainer}>
+            <View style={[styles.inputWrapper, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <FontAwesome 
                 name="envelope" 
                 size={18} 
@@ -122,7 +110,7 @@ export default function SignIn() {
                 style={styles.inputIcon} 
               />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: themeColors.text }]}
                 placeholder="Email Address"
                 placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
                 value={email}
@@ -132,7 +120,7 @@ export default function SignIn() {
               />
             </View>
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.inputWrapper, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <FontAwesome 
                 name="lock" 
                 size={18} 
@@ -140,7 +128,7 @@ export default function SignIn() {
                 style={styles.inputIcon} 
               />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.input, { color: themeColors.text }]}
                 placeholder="Password"
                 placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
                 secureTextEntry={!showPassword}
@@ -163,26 +151,23 @@ export default function SignIn() {
               style={styles.forgotPasswordButton}
               onPress={navigateToForgotPassword}
             >
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+              <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>
                 Forgot Password?
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.loginButton,
-                { 
-                  backgroundColor: colors.primary,
-                  opacity: (!email || !password || isLoading) ? 0.7 : 1,
-                }
-              ]}
+            <Button
+              title="Sign In"
               onPress={handleLogin}
+              loading={isLoading}
+              fullWidth
+              style={[styles.loginButton, { 
+                backgroundColor: themeColors.primary,
+                opacity: (!email || !password || isLoading) ? 0.7 : 1,
+              }]}
+              textStyle={styles.loginButtonText}
               disabled={!email || !password || isLoading}
-            >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Text>
-            </TouchableOpacity>
+            />
 
             <View style={styles.dividerContainer}>
               <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
@@ -190,69 +175,42 @@ export default function SignIn() {
               <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
             </View>
 
-            <TouchableOpacity
-              style={[styles.devButton, { backgroundColor: colors.primary }]}
+            <Button
+              title="Use Test Account"
               onPress={handleDevLogin}
-              disabled={isLoading || isDevLoading}
-            >
-              <Text style={styles.devButtonText}>
-                {isDevLoading ? 'Signing in...' : 'Use Test Account'}
-              </Text>
-            </TouchableOpacity>
+              variant="outline"
+              style={[styles.socialButton, {
+                backgroundColor: themeColors.card,
+                borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
+              }]}
+              textStyle={[styles.socialButtonText, { color: themeColors.text }]}
+              leftIcon={
+                <FontAwesome 
+                  name="user" 
+                  size={18} 
+                  color={themeColors.primary} 
+                  style={{ marginRight: 8 }} 
+                />
+              }
+            />
 
-            
-            <View style={styles.socialButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.socialButton, {
-                    backgroundColor: colors.card,
-                    borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
-                    borderWidth: 1,
-                  }]}
+            <View style={styles.footerContainer}>
+              <Text style={[styles.footerText, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
+                Don't have an account?{' '}
+                <Text 
+                  style={[styles.signUpText, { color: themeColors.primary }]}
+                  onPress={navigateToSignUp}
                 >
-                  <FontAwesome name="google" size={18} color="#DB4437" />
-                  <Text style={[styles.socialButtonText, { color: colors.text, marginLeft: 8 }]}>
-                    Continue with Google
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.socialButton, {
-                    backgroundColor: colors.card,
-                    borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
-                    borderWidth: 1,
-                    marginTop: 12,
-                  }]}
-                >
-                  <FontAwesome
-                    name="apple"
-                    size={18}
-                    color={colorScheme === 'dark' ? '#FFF' : '#000'}
-                  />
-                  <Text style={[styles.socialButtonText, { color: colors.text, marginLeft: 8 }]}>
-                    Continue with Apple
-                  </Text>
-                </TouchableOpacity>
-
-              </View>
-            <View>
-            <Text style={[styles.footerText, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
-              Don't have an account?{' '}
-              <Text 
-                style={[styles.signUpText, { color: colors.primary }]}
-                onPress={navigateToSignUp}
-              >
-                Sign Up
+                  Sign Up
+                </Text>
               </Text>
-            </Text>
+            </View>
           </View>
-          </View>
-
-        
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -263,13 +221,9 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    flex: 1,
-    height: '100%',
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   headerContainer: {
     marginBottom: 32,
@@ -288,10 +242,8 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
-    marginBottom: 24,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -300,13 +252,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
+    height: 56,
   },
   inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 56,
+    height: '100%',
     fontSize: 16,
   },
   passwordToggle: {
@@ -324,9 +277,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 56,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   loginButtonText: {
     color: '#fff',
@@ -344,45 +295,22 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 14,
-    color: '#999',
     marginHorizontal: 12,
   },
-  devButton: {
-    width: '100%',
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  devButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  socialButtonsContainer: {
-    width: '100%',
-    marginBottom: 16,
-  },
   socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
+    width: '100%',
     height: 50,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
   },
   socialButtonText: {
     marginLeft: 8,
     fontSize: 15,
     fontWeight: '500',
   },
-  loginText: {
-    fontWeight: '600',
-  },
   footerContainer: {
-    marginTop: 'auto',
-    justifyContent: 'center',
+    marginTop: 24,
     alignItems: 'center',
   },
   footerText: {
@@ -393,3 +321,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default SignIn;
