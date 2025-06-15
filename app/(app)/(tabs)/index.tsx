@@ -15,7 +15,7 @@ import { Habit } from '@/types';
 import { useAuth } from '@/providers/AuthProvider/useAuth';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function HomeScreen() {
   };
   
   const navigateToNewChallenge = () => {
-    router.push('/(tabs)/challenges');
+    router.push('/(app)/(tabs)/challenges');
   };
   
   return (
@@ -66,8 +66,8 @@ export default function HomeScreen() {
           <View>
             <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
             <Text style={[styles.userName, { color: colors.primary }]}>
-              {user?.displayName || 'User'}
-            </Text>
+            {userData?.username || 'User'}
+          </Text>
           </View>
           <View style={styles.headerRight}>
             <StreakCounter 

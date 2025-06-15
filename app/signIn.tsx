@@ -51,7 +51,7 @@ const SignIn = () => {
   const handleDevLogin = async () => {
     try {
       const result = await signIn({
-        email: 'tilak@gmail.com',
+        email: 'test@gmail.com',
         password: 'pass1234!'
       });
 

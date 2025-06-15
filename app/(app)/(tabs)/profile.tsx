@@ -10,25 +10,26 @@ import BadgeIcon from '@/components/BadgeIcon';
 import { sampleBadges } from '@/constants/SampleData';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider/useAuth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   const { toggleTheme, isDarkMode } = useTheme();
-  const router = useRouter();
-  const { logout, isAuthenticated, user: authUser } = useAuth();
+  const { logout, user: authUser, userData, fetchUserData } = useAuth();
   
-  // Get user data from auth
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
   const user = {
-    name: authUser?.displayName || 'User',
+    name: userData?.username || 'User',
     email: authUser?.email || 'No email available',
     joinDate: authUser?.metadata.creationTime || 'Unknown',
     streakCount: 5, // You might want to get this from your database
     totalPoints: 876, // You might want to get this from your database
   };
+
   
-  // Settings state
   const [settings, setSettings] = useState({
     notifications: true,
     dailyReminders: true,
@@ -37,7 +38,6 @@ export default function ProfileScreen() {
     soundEffects: false,
   });
 
-  // Update settings.darkMode when theme changes
   useEffect(() => {
     setSettings(prev => ({
       ...prev,

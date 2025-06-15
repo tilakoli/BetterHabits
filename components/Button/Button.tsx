@@ -106,7 +106,7 @@ const Button: React.FC<ButtonProps> = ({
       ) : (
         <>
           {leftIcon && <>{leftIcon}</>}
-          <Text style={[getTextStyle(), textStyle, leftIcon && { marginLeft: 8 }, rightIcon && { marginRight: 8 }]}>
+          <Text style={[getTextStyle(), textStyle, leftIcon  ? { marginLeft: 8 }: { marginRight: 8 }]}>
             {title}
           </Text>
           {rightIcon && <>{rightIcon}</>}

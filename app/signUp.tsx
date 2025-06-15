@@ -31,7 +31,7 @@ const SignUp = () => {
       });
       return;
     }
-
+  
     if (password !== confirmPassword) {
       showAlert({
         title: 'Error',
@@ -40,7 +40,7 @@ const SignUp = () => {
       });
       return;
     }
-
+  
     if (!termsAccepted) {
       showAlert({
         title: 'Error',
@@ -49,32 +49,25 @@ const SignUp = () => {
       });
       return;
     }
-
+  
     try {
-      const result = await signUp({
-        email,
-        password,
-        userName: name
+      const result = await signUp({ 
+        email, 
+        password, 
+        userName: name 
       });
-
-      if (result.success) {
-        showAlert({
-          title: 'Success',
-          message: 'Your account has been created successfully!',
-          type: 'success'
-        });
-      } else {
+  
+      if (!result.success) {
         showAlert({
           title: 'Error',
-          message: result.error || 'Failed to create account. Please try again.',
+          message: result.error || 'Failed to sign up',
           type: 'error'
         });
       }
     } catch (error) {
-      console.error('Signup error:', error);
       showAlert({
         title: 'Error',
-        message: 'An unexpected error occurred. Please try again.',
+        message: 'An unexpected error occurred',
         type: 'error'
       });
     }
