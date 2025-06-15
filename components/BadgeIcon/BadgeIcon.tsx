@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from './useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 import { Badge } from '@/types';
 
 interface BadgeIconProps {

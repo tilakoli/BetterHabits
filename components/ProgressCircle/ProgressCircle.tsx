@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from './useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 
 interface ProgressCircleProps {
   percentage: number;

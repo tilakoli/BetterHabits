@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Text, View, TransparentView } from '@/components/Themed';
+import { Text, View, TransparentView } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import ChallengeCard from '@/components/ChallengeCard';
+import { useColorScheme } from '@/utils/components/useColorScheme';
+import { ChallengeCard } from '@/components';
 import { sampleChallenges } from '@/constants/SampleData';
 import { Challenge } from '@/types';
 

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { Text, View, Card, TransparentView } from '@/components/Themed';
+import { Text, View, Card, TransparentView } from '@/utils/components/Themed';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 import { Challenge } from '@/types';
 
 interface ChallengeCardProps {

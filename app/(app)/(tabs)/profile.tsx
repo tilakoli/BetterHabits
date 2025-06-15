@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, Switch, Image, Alert } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import { Text, View } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useTheme } from '@/components/ThemeContext';
-import StreakCounter from '@/components/StreakCounter';
-import BadgeIcon from '@/components/BadgeIcon';
+import { useColorScheme } from '@/utils/components/useColorScheme';
+import { useTheme } from '@/utils/components/ThemeContext';
+import { StreakCounter, BadgeIcon } from '@/components';
 import { sampleBadges } from '@/constants/SampleData';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider/useAuth';
@@ -16,6 +15,7 @@ export default function ProfileScreen() {
   const colors = Colors[colorScheme];
   const { toggleTheme, isDarkMode } = useTheme();
   const { logout, user: authUser, userData, fetchUserData } = useAuth();
+  const router = useRouter();
   
   useEffect(() => {
     fetchUserData();
@@ -142,7 +142,7 @@ export default function ProfileScreen() {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.sectionCard}>
-            {renderAccountOption('user', 'Personal Information')}
+            {renderAccountOption('user', 'Personal Information', undefined, () => router.push('/personalInfo'))}
             {renderAccountOption('bell', 'Notifications')}
             {renderAccountOption('lock', 'Privacy')}
             {renderAccountOption('question-circle', 'Help & Support')}

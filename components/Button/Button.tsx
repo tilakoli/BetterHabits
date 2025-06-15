@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, TouchableOpacityProps } from 'react-native';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '../useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive';
 
@@ -61,7 +61,7 @@ const Button: React.FC<ButtonProps> = ({
       case 'destructive':
         return {
           ...baseStyle,
-          backgroundColor: colors.destructive,
+          backgroundColor: '#E74C3C',
         };
       case 'primary':
       default:
@@ -106,7 +106,7 @@ const Button: React.FC<ButtonProps> = ({
       ) : (
         <>
           {leftIcon && <>{leftIcon}</>}
-          <Text style={[getTextStyle(), textStyle, leftIcon  ? { marginLeft: 8 }: { marginRight: 8 }]}>
+          <Text style={[getTextStyle(), textStyle, leftIcon ? { marginLeft: 8 } : { marginRight: 8 }]}>
             {title}
           </Text>
           {rightIcon && <>{rightIcon}</>}

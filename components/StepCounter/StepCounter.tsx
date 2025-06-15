@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
-import ProgressCircle from './ProgressCircle';
+import ProgressCircle from '@/components/ProgressCircle/ProgressCircle';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from './useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 
 interface StepCounterProps {
   targetSteps: number;

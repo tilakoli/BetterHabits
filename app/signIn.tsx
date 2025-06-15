@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
-import { StyleSheet, TextInput, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, TouchableOpacity } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import React from 'react';
+import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView, StatusBar, TouchableOpacity } from 'react-native';
+import { Text, View } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 import { useAuth } from '@/providers/AuthProvider/useAuth';
-import { showAlert } from '@/components/CustomAlert';
-import Button from '@/components/Button';
+import { Button } from '@/components';
+import showAlert from '@/components/CustomAlert/CustomAlert';
+import { BaseForm } from '@/utils/forms/BaseForm';
+import { createLoginSchema } from '@/utils/forms/validationSchemas';
+import { FormikHelpers } from 'formik';
+import InputField from '@/components/InputField/InputField';
+
+interface SignInFormValues {
+  email: string;
+  password: string;
+}
 
 const SignIn = () => {
   const colorScheme = useColorScheme() || 'light';
@@ -15,22 +24,14 @@ const SignIn = () => {
   const router = useRouter();
   const { signIn, isLoading } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const initialValues: SignInFormValues = {
+    email: '',
+    password: '',
+  };
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      showAlert({
-        title: 'Error',
-        message: 'Please fill in all fields',
-        type: 'error'
-      });
-      return;
-    }
-
+  const handleLogin = async (values: SignInFormValues, formikHelpers: FormikHelpers<SignInFormValues>) => {
     try {
-      const result = await signIn({ email, password });
+      const result = await signIn({ email: values.email, password: values.password });
 
       if (!result.success) {
         showAlert({
@@ -101,111 +102,108 @@ const SignIn = () => {
             </Text>
           </View>
 
-          <View style={styles.formContainer}>
-            <View style={[styles.inputWrapper, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-              <FontAwesome 
-                name="envelope" 
-                size={18} 
-                color={colorScheme === 'dark' ? '#A0A0A0' : '#666'} 
-                style={styles.inputIcon} 
-              />
-              <TextInput
-                style={[styles.input, { color: themeColors.text }]}
-                placeholder="Email Address"
-                placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={[styles.inputWrapper, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-              <FontAwesome 
-                name="lock" 
-                size={18} 
-                color={colorScheme === 'dark' ? '#A0A0A0' : '#666'} 
-                style={styles.inputIcon} 
-              />
-              <TextInput
-                style={[styles.input, { color: themeColors.text }]}
-                placeholder="Password"
-                placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.passwordToggle}
-              >
-                <FontAwesome 
-                  name={showPassword ? 'eye-slash' : 'eye'} 
-                  size={18} 
-                  color={colorScheme === 'dark' ? '#A0A0A0' : '#666'} 
+          <BaseForm
+            initialValues={initialValues}
+            validationSchema={createLoginSchema()}
+            onSubmit={handleLogin}
+          >
+            {(formikProps) => (
+              <View style={styles.formContainer}>
+                <InputField
+                  label="Email Address"
+                  placeholder="Enter your email"
+                  leftIcon={{ name: 'envelope' }}
+                  value={formikProps.values.email}
+                  onChangeText={formikProps.handleChange('email')}
+                  onBlur={formikProps.handleBlur('email')}
+                  error={formikProps.errors.email}
+                  touched={formikProps.touched.email}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                 />
-              </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity
-              style={styles.forgotPasswordButton}
-              onPress={navigateToForgotPassword}
-            >
-              <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
-
-            <Button
-              title="Sign In"
-              onPress={handleLogin}
-              loading={isLoading}
-              fullWidth
-              style={[styles.loginButton, { 
-                backgroundColor: themeColors.primary,
-                opacity: (!email || !password || isLoading) ? 0.7 : 1,
-              }]}
-              textStyle={styles.loginButtonText}
-              disabled={!email || !password || isLoading}
-            />
-
-            <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
-              <Text style={[styles.dividerText, { color: colorScheme === 'dark' ? '#666' : '#999' }]}>or</Text>
-              <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
-            </View>
-
-            <Button
-              title="Use Test Account"
-              onPress={handleDevLogin}
-              variant="outline"
-              style={[styles.socialButton, {
-                backgroundColor: themeColors.card,
-                borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
-              }]}
-              textStyle={[styles.socialButtonText, { color: themeColors.text }]}
-              leftIcon={
-                <FontAwesome 
-                  name="user" 
-                  size={18} 
-                  color={themeColors.primary} 
-                  style={{ marginRight: 8 }} 
+                <InputField
+                  label="Password"
+                  placeholder="Enter your password"
+                  leftIcon={{ name: 'lock' }}
+                  secureTextEntry
+                  value={formikProps.values.password}
+                  onChangeText={formikProps.handleChange('password')}
+                  onBlur={formikProps.handleBlur('password')}
+                  error={formikProps.errors.password}
+                  touched={formikProps.touched.password}
                 />
-              }
-            />
 
-            <View style={styles.footerContainer}>
-              <Text style={[styles.footerText, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
-                Don't have an account?{' '}
-                <Text 
-                  style={[styles.signUpText, { color: themeColors.primary }]}
-                  onPress={navigateToSignUp}
+                <TouchableOpacity
+                  style={styles.forgotPasswordButton}
+                  onPress={navigateToForgotPassword}
                 >
-                  Sign Up
-                </Text>
-              </Text>
-            </View>
-          </View>
+                  <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>
+                    Forgot Password?
+                  </Text>
+                </TouchableOpacity>
+
+                <Button
+                  title="Sign In"
+                  onPress={() => formikProps.handleSubmit()}
+                  loading={isLoading}
+                  fullWidth
+                  style={[
+                    styles.loginButton,
+                    { 
+                      backgroundColor: themeColors.primary,
+                      opacity: (!formikProps.isValid || isLoading) ? 0.7 : 1,
+                    }
+                  ] as any}
+                  textStyle={styles.loginButtonText}
+                  disabled={!formikProps.isValid || isLoading}
+                />
+
+                <View style={styles.dividerContainer}>
+                  <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
+                  <Text style={[styles.dividerText, { color: colorScheme === 'dark' ? '#666' : '#999' }]}>or</Text>
+                  <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
+                </View>
+
+                <Button
+                  title="Use Test Account"
+                  onPress={handleDevLogin}
+                  variant="outline"
+                  style={[
+                    styles.socialButton,
+                    {
+                      backgroundColor: themeColors.card,
+                      borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
+                    }
+                  ] as any}
+                  textStyle={[
+                    styles.socialButtonText,
+                    { color: themeColors.text }
+                  ] as any}
+                  leftIcon={
+                    <FontAwesome 
+                      name="user" 
+                      size={18} 
+                      color={themeColors.primary} 
+                      style={{ marginRight: 8 }} 
+                    />
+                  }
+                />
+
+                <View style={styles.footerContainer}>
+                  <Text style={[styles.footerText, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
+                    Don't have an account?{' '}
+                    <Text 
+                      style={[styles.signUpText, { color: themeColors.primary }]}
+                      onPress={navigateToSignUp}
+                    >
+                      Sign Up
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            )}
+          </BaseForm>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -224,6 +222,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 40,
+    justifyContent: 'center',
+    minHeight: '100%',
   },
   headerContainer: {
     marginBottom: 32,
@@ -244,26 +244,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    height: 56,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: '100%',
-    fontSize: 16,
-  },
-  passwordToggle: {
-    padding: 8,
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',

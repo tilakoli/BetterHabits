@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { Text, View, TransparentView } from '@/components/Themed';
+import { Text, View, TransparentView } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import ProgressCircle from '@/components/ProgressCircle';
-import CalendarView from '@/components/CalendarView';
+import { useColorScheme } from '@/utils/components/useColorScheme';
+import { ProgressCircle, CalendarView } from '@/components';
 import { sampleHabits } from '@/constants/SampleData';
 
 type TimeRange = 'week' | 'month' | 'year';

@@ -2,10 +2,10 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { Text, View, Card, TransparentView } from '@/components/Themed';
-import ProgressCircle from './ProgressCircle';
+import { Text, View, Card, TransparentView } from '@/utils/components/Themed';
+import { ProgressCircle } from '@/components';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 import { Habit } from '@/types';
 
 interface HabitCardProps {

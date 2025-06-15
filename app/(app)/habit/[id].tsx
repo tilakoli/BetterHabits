@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import { Text, View } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import ProgressCircle from '@/components/ProgressCircle';
-import CalendarView from '@/components/CalendarView';
-import BadgeIcon from '@/components/BadgeIcon';
-import WalkingChallengeDetail from '@/components/WalkingChallengeDetail';
+import { useColorScheme } from '@/utils/components/useColorScheme';
+import { ProgressCircle, CalendarView, BadgeIcon } from '@/components';
+import WalkingChallengeDetail from '@/components/WalkingChallengeDetail/WalkingChallengeDetail';
 import { sampleHabits, sampleBadges, sampleChallenges } from '@/constants/SampleData';
 import { completeHabitForToday, calculateProgressPercentage } from '@/utils/habitUtils';
 import { Habit, Challenge } from '@/types';

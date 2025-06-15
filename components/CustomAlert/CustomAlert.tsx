@@ -11,7 +11,7 @@ interface CustomAlertProps {
   onDismiss?: () => void;
 }
 
-export const showAlert = ({
+const showAlert = ({
   title,
   message,
   type = 'info',
@@ -32,6 +32,8 @@ export const showAlert = ({
     { cancelable: true }
   );
 };
+
+export default showAlert;
 
 // Usage example:
 // showAlert({

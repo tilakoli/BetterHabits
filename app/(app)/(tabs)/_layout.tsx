@@ -3,10 +3,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, Tabs } from 'expo-router';
 import { Pressable } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useTheme } from '@/components/ThemeContext';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/utils/components/ThemeContext';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { useClientOnlyValue } from '@/utils/components/useClientOnlyValue';
 
 /**
  * You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/

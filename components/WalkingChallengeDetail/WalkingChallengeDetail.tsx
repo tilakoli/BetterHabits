@@ -4,9 +4,9 @@ import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from './useColorScheme';
-import StepCounter from './StepCounter';
-import StepGoalModal from './StepGoalModal';
+import { useColorScheme } from '@/utils/components/useColorScheme';
+import StepCounter from '@/components/StepCounter/StepCounter';
+import StepGoalModal from '@/components/StepGoalModal/StepGoalModal';
 import { formatDate } from '@/utils/dateUtils';
 import { Habit, Challenge } from '@/types';
 

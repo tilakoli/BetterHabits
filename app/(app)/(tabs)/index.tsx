@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import { Text, View } from '@/utils/components/Themed';
 import { useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import HabitCard from '@/components/HabitCard';
-import StreakCounter from '@/components/StreakCounter';
+import { useColorScheme } from '@/utils/components/useColorScheme';
+import { HabitCard, StreakCounter } from '@/components';
 import { getGreeting } from '@/utils/dateUtils';
 import { getRandomMotivationalQuote } from '@/utils/habitUtils';
 import { sampleHabits } from '@/constants/SampleData';

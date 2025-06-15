@@ -10,7 +10,6 @@
     "test": "jest --watchAll",
     "build:apk": "npx eas build -p android --profile preview --local --non-interactive",
     "build:app-bundle": "npx eas build -p android --profile preview --local --non-interactive --type app-bundle",
-
     "build:dev:android": "npx eas build -p android --profile development",
     "build:dev:ios": "npx eas build -p ios --profile development"
   },
@@ -32,6 +31,7 @@
     "expo-system-ui": "~5.0.6",
     "expo-web-browser": "~14.1.6",
     "firebase": "^11.9.0",
+    "formik": "^2.4.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.1",
@@ -40,7 +40,8 @@
     "react-native-safe-area-context": "5.3.0",
     "react-native-screens": "~4.10.0",
     "react-native-svg": "^15.11.2",
-    "react-native-web": "~0.20.0"
+    "react-native-web": "~0.20.0",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

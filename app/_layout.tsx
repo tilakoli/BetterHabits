@@ -10,8 +10,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 
-import { useColorScheme } from "@/components/useColorScheme";
-import { ThemeProvider } from "@/components/ThemeContext";
+import { useColorScheme } from "@/utils/components/useColorScheme";
+import { ThemeProvider } from "@/utils/components/ThemeContext";
 import { AuthContextProvider, useAuth } from "@/providers/AuthProvider/useAuth";
 import Colors from "@/constants/Colors";
 

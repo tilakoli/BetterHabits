@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import { useColorScheme } from './useColorScheme';
+import { useColorScheme } from '@/utils/components/useColorScheme';
 
 interface StreakCounterProps {
   count: number;
