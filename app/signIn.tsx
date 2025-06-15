@@ -6,11 +6,14 @@ import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/providers/AuthProvider/useAuth';
+import { showAlert } from '@/components/CustomAlert';
 
-export default function LoginScreen() {
+export default function SignIn() {
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   const router = useRouter();
+  const { signIn } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,28 +21,52 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   
   const handleLogin = async () => {
-    // In a real app, this would validate and authenticate the user
+    if (!email || !password) {
+      showAlert({
+        title: 'Error',
+        message: 'Please fill in all fields',
+        type: 'error'
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
-      // Store login state in AsyncStorage
-      await AsyncStorage.setItem('isLoggedIn', 'true');
-      // For demo purposes, we'll just navigate to the main app
-      router.replace('/(tabs)');
-    } catch (e) {
-      console.error('Error during login:', e);
-      alert('Failed to log in. Please try again.');
+      const result = await signIn({ email, password });
+      
+      if (result.success) {
+        console.log("[SignIn] Login successful, waiting for auth state update");
+        // The auth state will be updated by the auth provider
+        // and the navigation will be handled by RootLayoutNav
+      } else {
+        showAlert({
+          title: 'Error',
+          message: result.error || 'Failed to log in',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error("[SignIn] Login error:", error);
+      showAlert({
+        title: 'Error',
+        message: 'An unexpected error occurred',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
   };
   
   const navigateToSignUp = () => {
-    router.push('/signup');
+    router.push('/signUp');
   };
   
   const navigateToForgotPassword = () => {
-    // In a real app, this would navigate to forgot password screen
-    alert('Forgot Password functionality would be implemented here');
+    showAlert({
+      title: 'Coming Soon',
+      message: 'Password reset functionality will be available soon.',
+      type: 'info'
+    });
   };
   
   return (
@@ -100,7 +127,11 @@ export default function LoginScreen() {
         </View>
         
         <TouchableOpacity 
-          style={[styles.loginButton, { backgroundColor: colors.primary }]}
+          style={[
+            styles.loginButton, 
+            { backgroundColor: colors.primary },
+            (!email || !password || isLoading) && styles.disabledButton
+          ]}
           onPress={handleLogin}
           disabled={!email || !password || isLoading}
         >
@@ -213,6 +244,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   loginButtonText: {
     color: 'white',

@@ -1,31 +1,33 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack, Redirect } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
-import 'react-native-reanimated';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack, router, useSegments, useRouter } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useRef, useState } from "react";
+import "react-native-reanimated";
 
-import { useColorScheme } from '@/components/useColorScheme';
-import { ThemeProvider } from '@/components/ThemeContext';
+import { useColorScheme } from "@/components/useColorScheme";
+import { ThemeProvider } from "@/components/ThemeContext";
+import { AuthContextProvider, useAuth } from "@/providers/AuthProvider/useAuth";
 
 export {
-  // Catch any errors thrown by the Layout component.
   ErrorBoundary,
-} from 'expo-router';
+} from "expo-router";
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
 
@@ -46,72 +48,93 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <RootLayoutNav />
+      <AuthContextProvider>
+        <RootLayoutNav />
+      </AuthContextProvider>
     </ThemeProvider>
   );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  
-  // Mock auth state (in a real app, this would come from a context/auth provider)
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  
-  // Check for authentication status on mount
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+  const [lastAuthState, setLastAuthState] = useState(isAuthenticated);
+  const currentPath = segments.join('/');
+  const isNavigating = useRef(false);
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // In a real app, you'd check a token or user session
-        // For demo, just check if we've "logged in" before
-        const loggedIn = await AsyncStorage.getItem('isLoggedIn');
-        setIsAuthenticated(loggedIn === 'true');
-      } catch (e) {
-        console.error('Error checking auth status', e);
-      } finally {
-        setIsCheckingAuth(false);
+    console.log("[RootLayoutNav] Current state:", {
+      currentPath,
+      isAuthenticated,
+      isLoading,
+      lastAuthState,
+      segments,
+      isNavigating: isNavigating.current,
+      hasInitialized: hasInitialized.current
+    });
+
+    // Don't do anything while loading or if we're already navigating
+    if (isLoading || isNavigating.current) {
+      console.log("[RootLayoutNav] Skipping navigation - loading or already navigating");
+      return;
+    }
+
+    // Check if we're in the auth group
+    const inAppGroup = segments[0] === "(app)";
+    const isAuthScreen = segments[0] === "signIn" || segments[0] === "signUp";
+
+    console.log("[RootLayoutNav] Navigation check:", {
+      inAppGroup,
+      isAuthScreen,
+      shouldRedirectToHome: isAuthenticated && isAuthScreen,
+      shouldRedirectToSignIn: !isAuthenticated && inAppGroup
+    });
+
+    // If auth state changed, update last known state
+    if (isAuthenticated !== lastAuthState) {
+      console.log("[RootLayoutNav] Auth state changed, updating last known state");
+      setLastAuthState(isAuthenticated);
+    }
+
+    // Only handle navigation if we've initialized
+    if (hasInitialized.current) {
+      // Handle navigation based on auth state
+      if (isAuthenticated) {
+        // If authenticated and on auth screen, redirect to home
+        if (isAuthScreen) {
+          console.log("[RootLayoutNav] Authenticated user on auth screen, redirecting to home");
+          isNavigating.current = true;
+          router.replace("/(app)/(tabs)");
+          return;
+        }
+      } else {
+        // If not authenticated and in app group, redirect to sign in
+        if (inAppGroup) {
+          console.log("[RootLayoutNav] Unauthenticated user in app group, redirecting to sign in");
+          isNavigating.current = true;
+          router.replace("/signIn");
+          return;
+        }
       }
-    };
-    
-    checkAuth();
-  }, []);
-  
-  if (isCheckingAuth) {
-    return null; // or a loading spinner
+    } else {
+      hasInitialized.current = true;
+    }
+
+    console.log("[RootLayoutNav] No redirect needed");
+  }, [isAuthenticated, isLoading, segments, lastAuthState]);
+
+  // Reset navigation flag when segments change
+  useEffect(() => {
+    isNavigating.current = false;
+  }, [segments]);
+
+  // Show nothing while loading
+  if (isLoading) {
+    console.log("[RootLayoutNav] Loading state, showing nothing");
+    return null;
   }
-  
-  return (
-    <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="habit/[id]" options={{ 
-          headerShown: true,
-          title: 'Habit Details',
-          headerBackTitle: 'Back',
-        }} />
-        <Stack.Screen name="habit-creation" options={{ 
-          headerShown: true,
-          title: 'Create Habit',
-        }} />
-        <Stack.Screen name="habit-edit/[id]" options={{ 
-          headerShown: true,
-          title: 'Edit Habit',
-        }} />
-        <Stack.Screen name="activity-logging" options={{ 
-          headerShown: true,
-          title: 'Complete Activity',
-          headerBackVisible: false,
-        }} />
-        <Stack.Screen name="challenge/[id]" options={{ 
-          headerShown: true,
-          title: 'Challenge Details',
-        }} />
-      </Stack>
-      
-      {/* Only redirect to login if not authenticated */}
-      {!isAuthenticated && <Redirect href="/(auth)/login" />}
-    </NavigationThemeProvider>
-  );
+
+  return <Stack />;
 }

@@ -65,10 +65,8 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Clear login state
               await AsyncStorage.removeItem('isLoggedIn');
-              // Navigate to login screen
-              router.replace('/(auth)/login');
+              router.replace('/signIn');
             } catch (error) {
               console.error('Error logging out:', error);
             }

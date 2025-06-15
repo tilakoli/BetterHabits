@@ -5,39 +5,60 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/providers/AuthProvider/useAuth';
+import { showAlert } from '@/components/CustomAlert';
 
-export default function SignUpScreen() {
+export default function SignUp() {
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   const router = useRouter();
-  
+  const { signUp, isLoading } = useAuth();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   
   const handleSignUp = async () => {
-    // In a real app, this would validate and create the user account
     try {
-      setIsLoading(true);
-      // Store login state in AsyncStorage
-      await AsyncStorage.setItem('isLoggedIn', 'true');
-      // For demo purposes, we'll just navigate to the main app
-      router.replace('/(tabs)');
-    } catch (e) {
-      console.error('Error during signup:', e);
-      alert('Failed to create account. Please try again.');
-    } finally {
-      setIsLoading(false);
+      const result = await signUp({
+        email,
+        password,
+        userName: name // Including username in payload for future use
+      });
+
+      if (result.success) {
+        showAlert({
+          title: 'Success',
+          message: 'Account created successfully! Please log in to continue.',
+          type: 'success',
+          buttons: [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/signIn')
+            }
+          ]
+        });
+      } else {
+        showAlert({
+          title: 'Error',
+          message: result.error || 'Failed to create account. Please try again.',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      showAlert({
+        title: 'Error',
+        message: 'An unexpected error occurred. Please try again.',
+        type: 'error'
+      });
     }
   };
   
   const navigateToLogin = () => {
-    router.push('/login');
+    router.push('/signIn');
   };
   
   const isFormValid = () => {
