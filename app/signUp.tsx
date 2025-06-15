@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import { StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ScrollView, View, StatusBar } from 'react-native';
+import { Text } from '@/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
@@ -20,26 +20,21 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  
+
   const handleSignUp = async () => {
     try {
       const result = await signUp({
         email,
         password,
-        userName: name // Including username in payload for future use
+        userName: name
       });
 
       if (result.success) {
+        // The auth state change will handle the navigation to the home page
         showAlert({
           title: 'Success',
-          message: 'Account created successfully! Please log in to continue.',
-          type: 'success',
-          buttons: [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/signIn')
-            }
-          ]
+          message: 'Your account has been created successfully!',
+          type: 'success'
         });
       } else {
         showAlert({
@@ -49,6 +44,7 @@ export default function SignUp() {
         });
       }
     } catch (error) {
+      console.error('Signup error:', error);
       showAlert({
         title: 'Error',
         message: 'An unexpected error occurred. Please try again.',
@@ -56,202 +52,280 @@ export default function SignUp() {
       });
     }
   };
-  
+
   const navigateToLogin = () => {
     router.push('/signIn');
   };
-  
+
   const isFormValid = () => {
-    return name.trim() !== '' && 
-           email.trim() !== '' && 
-           password.trim() !== '' && 
-           password === confirmPassword && 
-           termsAccepted;
+    return name.trim() !== '' &&
+      email.trim() !== '' &&
+      password.trim() !== '' &&
+      password === confirmPassword &&
+      termsAccepted;
   };
-  
+
   return (
-    <KeyboardAvoidingView 
-      style={[styles.container, { backgroundColor: colors.background }]} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={[styles.headerContainer, { backgroundColor: 'transparent' }]}>
-          <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
-          <Text style={[styles.subtitle, { color: colorScheme === 'dark' ? '#999' : '#666' }]}>Sign up to track and build better habits</Text>
-        </View>
-        
-        <View style={[styles.inputContainer, { backgroundColor: 'transparent' }]}>
-          <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
-            <FontAwesome name="user" size={18} color={colorScheme === 'dark' ? '#999' : '#999'} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Full Name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              placeholderTextColor={colorScheme === 'dark' ? '#999' : '#999'}
-            />
-          </View>
-          
-          <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
-            <FontAwesome name="envelope" size={18} color={colorScheme === 'dark' ? '#999' : '#999'} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor={colorScheme === 'dark' ? '#999' : '#999'}
-            />
-          </View>
-          
-          <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
-            <FontAwesome name="lock" size={18} color={colorScheme === 'dark' ? '#999' : '#999'} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Password"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              placeholderTextColor={colorScheme === 'dark' ? '#999' : '#999'}
-            />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.passwordToggle}
-            >
-              <FontAwesome name={showPassword ? "eye-slash" : "eye"} size={18} color={colorScheme === 'dark' ? '#999' : '#999'} />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={[styles.inputWrapper, { backgroundColor: colors.card }]}>
-            <FontAwesome name="lock" size={18} color={colorScheme === 'dark' ? '#999' : '#999'} style={styles.inputIcon} />
-         
-             <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Confirm Password"
-              secureTextEntry={!showPassword}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholderTextColor={colorScheme === 'dark' ? '#999' : '#999'}
-            />
-          </View>
-          
-          <TouchableOpacity 
-            style={[styles.termsContainer, { backgroundColor: 'transparent' }]}
-            onPress={() => setTermsAccepted(!termsAccepted)}
-          >
-            <View style={[styles.checkboxContainer, { backgroundColor: 'transparent' }]}>
-              {termsAccepted ? (
-                <FontAwesome name="check-square" size={20} color={colors.primary} />
-              ) : (
-                <FontAwesome name="square-o" size={20} color={colorScheme === 'dark' ? '#999' : '#999'} />
-              )}
-            </View>
-            <Text style={[styles.termsText, { color: colorScheme === 'dark' ? '#EEE' : '#333' }]}>
-              I agree to the <Text style={[styles.termsLink, { color: colors.primary }]}>Terms of Service</Text> and <Text style={[styles.termsLink, { color: colors.primary }]}>Privacy Policy</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
-        <TouchableOpacity 
-          style={[
-            styles.signUpButton, 
-            { backgroundColor: colors.primary },
-            (!isFormValid() || isLoading) && styles.disabledButton
-          ]}
-          onPress={handleSignUp}
-          disabled={!isFormValid() || isLoading}
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.signUpButtonText}>{isLoading ? 'Creating Account...' : 'Sign Up'}</Text>
-        </TouchableOpacity>
-        
-        <View style={[styles.dividerContainer, { backgroundColor: 'transparent' }]}>
-          <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#444' : '#DDD' }]} />
-          <Text style={[styles.dividerText, { color: colorScheme === 'dark' ? '#999' : '#999' }]}>or</Text>
-          <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#444' : '#DDD' }]} />
-        </View>
-        
-        <View style={[styles.socialButtonsContainer, { backgroundColor: 'transparent' }]}>
-          <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card }]}>
-            <FontAwesome name="google" size={18} color="#DB4437" />
-            <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card }]}>
-            <FontAwesome name="apple" size={18} color={colorScheme === 'dark' ? '#FFF' : '#000'} />
-            <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={[styles.footerContainer, { backgroundColor: 'transparent' }]}>
-          <Text style={[styles.footerText, { color: colorScheme === 'dark' ? '#999' : '#666' }]}>Already have an account?</Text>
-          <TouchableOpacity onPress={navigateToLogin}>
-            <Text style={[styles.loginText, { color: colors.primary }]}>Log In</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.headerContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
+              Build habits that build you!
+            </Text>
+          </View>
+
+          <View style={styles.formContainer}>
+            <View style={[styles.formInnerContainer, { maxWidth: 400, width: '100%', alignSelf: 'center' }]}>
+              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <FontAwesome
+                  name="user"
+                  size={18}
+                  color={colorScheme === 'dark' ? '#A0A0A0' : '#666'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Full Name"
+                  placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <FontAwesome
+                  name="envelope"
+                  size={18}
+                  color={colorScheme === 'dark' ? '#A0A0A0' : '#666'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Email Address"
+                  placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <FontAwesome
+                  name="lock"
+                  size={18}
+                  color={colorScheme === 'dark' ? '#A0A0A0' : '#666'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Password"
+                  placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.passwordToggle}
+                >
+                  <FontAwesome
+                    name={showPassword ? 'eye-slash' : 'eye'}
+                    size={18}
+                    color={colorScheme === 'dark' ? '#A0A0A0' : '#666'}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <FontAwesome
+                  name="lock"
+                  size={18}
+                  color={colorScheme === 'dark' ? '#A0A0A0' : '#666'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={colorScheme === 'dark' ? '#555' : '#999'}
+                  secureTextEntry={!showPassword}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+              </View>
+
+              <View style={[styles.termsContainer, { marginTop: 8 }]}>
+                <TouchableOpacity
+                  onPress={() => setTermsAccepted(!termsAccepted)}
+                  style={styles.checkboxContainer}
+                >
+                  {termsAccepted ? (
+                    <FontAwesome name="check-square" size={20} color={colors.primary} />
+                  ) : (
+                    <FontAwesome
+                      name="square-o"
+                      size={20}
+                      color={colorScheme === 'dark' ? '#A0A0A0' : '#666'}
+                    />
+                  )}
+                </TouchableOpacity>
+                <Text style={[styles.termsText, {
+                  color: colorScheme === 'dark' ? '#E0E0E0' : '#333',
+                  flex: 1,
+                  marginLeft: 8,
+                  lineHeight: 20,
+                }]}>
+                  I agree to the{' '}
+                  <Text style={[styles.termsLink, { color: colors.primary }]} onPress={() => { }}>
+                    Terms of Service
+                  </Text>{' '}
+                  and{' '}
+                  <Text style={[styles.termsLink, { color: colors.primary }]} onPress={() => { }}>
+                    Privacy Policy
+                  </Text>
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.signUpButton,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: (!isFormValid() || isLoading) ? 0.7 : 1,
+                  }
+                ]}
+                onPress={handleSignUp}
+                disabled={!isFormValid() || isLoading}
+              >
+                <Text style={styles.signUpButtonText}>
+                  {isLoading ? 'Creating Account...' : 'Sign Up'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.dividerContainer}>
+                <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }]} />
+                <Text style={[styles.dividerText, { color: colorScheme === 'dark' ? '#888' : '#999' }]}>or</Text>
+                <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }]} />
+              </View>
+
+              <View style={styles.socialButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.socialButton, {
+                    backgroundColor: colors.card,
+                    borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
+                    borderWidth: 1,
+                  }]}
+                >
+                  <FontAwesome name="google" size={18} color="#DB4437" />
+                  <Text style={[styles.socialButtonText, { color: colors.text, marginLeft: 8 }]}>
+                    Continue with Google
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.socialButton, {
+                    backgroundColor: colors.card,
+                    borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
+                    borderWidth: 1,
+                    marginTop: 12,
+                  }]}
+                >
+                  <FontAwesome
+                    name="apple"
+                    size={18}
+                    color={colorScheme === 'dark' ? '#FFF' : '#000'}
+                  />
+                  <Text style={[styles.socialButtonText, { color: colors.text, marginLeft: 8 }]}>
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.footerContainer}>
+                  <Text style={[styles.footerText, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
+                    Already have an account?{' '}
+                    <Text
+                      style={[styles.loginText, { color: colors.primary }]}
+                      onPress={navigateToLogin}
+                    >
+                      Sign In
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 40,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   headerContainer: {
+    marginBottom: 32,
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoContainer: {
-    marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
+    marginBottom: 8,
   },
-  inputContainer: {
+  formContainer: {
+    width: '100%',
     marginBottom: 24,
+  },
+  footerContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  formInnerContainer: {
+    width: '100%',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     borderRadius: 12,
-    marginBottom: 16,
     paddingHorizontal: 16,
-    height: 56,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginBottom: 16,
+    borderWidth: 1,
   },
   inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    height: '100%',
+    height: 56,
     fontSize: 16,
   },
   passwordToggle: {
@@ -260,92 +334,69 @@ const styles = StyleSheet.create({
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 8,
+    marginBottom: 24,
   },
   checkboxContainer: {
-    marginRight: 10,
     paddingTop: 2,
   },
   termsText: {
     flex: 1,
     fontSize: 14,
-    color: '#666',
     lineHeight: 20,
   },
   termsLink: {
     fontWeight: '600',
   },
   signUpButton: {
+    width: '100%',
     height: 56,
     borderRadius: 12,
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  disabledButton: {
-    opacity: 0.6,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   signUpButtonText: {
-    color: 'white',
+    color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+
+  footerText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  loginText: {
+    fontWeight: '600',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginVertical: 24,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#DDD',
   },
   dividerText: {
+    fontSize: 14,
     color: '#999',
-    paddingHorizontal: 16,
+    marginHorizontal: 12,
   },
   socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 40,
+    width: '100%',
+    marginBottom: 16,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'white',
     borderRadius: 12,
-    height: 56,
-    paddingHorizontal: 24,
-    width: '48%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    height: 50,
+    paddingHorizontal: 16,
   },
   socialButtonText: {
     marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
   },
-  footerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#666',
-    marginRight: 4,
-  },
-  loginText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-}); 
+});

@@ -12,8 +12,10 @@ import { getRandomMotivationalQuote } from '@/utils/habitUtils';
 import { sampleHabits } from '@/constants/SampleData';
 import { completeHabitForToday } from '@/utils/habitUtils';
 import { Habit } from '@/types';
+import { useAuth } from '@/providers/AuthProvider/useAuth';
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   const router = useRouter();
@@ -60,9 +62,14 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greeting}>{greeting}, Alex</Text>
+        <View style={[styles.header, { backgroundColor: colors.background }]}>
+          <View>
+            <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
+            <Text style={[styles.userName, { color: colors.primary }]}>
+              {user?.displayName || 'User'}
+            </Text>
+          </View>
+          <View style={styles.headerRight}>
             <StreakCounter 
               count={streakCount}
               size="small"
@@ -213,5 +220,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  userName: {
+    fontSize: 18,
   },
 });

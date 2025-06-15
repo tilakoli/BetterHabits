@@ -25,21 +25,30 @@ export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
-// Function to clear persisted auth state
+// Clear persisted auth state (useful for logout)
 export const clearPersistedAuthState = async () => {
   try {
+    // Sign out first
+    await auth.signOut();
+    
     // Switch to in-memory persistence temporarily
     await setPersistence(auth, inMemoryPersistence);
-    // Clear AsyncStorage auth data
+    
+    // Clear any remaining auth state
     const keys = await AsyncStorage.getAllKeys();
     const authKeys = keys.filter(key => key.startsWith('firebase:authUser'));
+    
     if (authKeys.length > 0) {
       await AsyncStorage.multiRemove(authKeys);
     }
+    
     // Switch back to AsyncStorage persistence
     await setPersistence(auth, getReactNativePersistence(AsyncStorage));
+    
+    return true;
   } catch (error) {
     console.error('Error clearing persisted auth state:', error);
+    return false;
   }
 };
 

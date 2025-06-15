@@ -9,6 +9,7 @@ import StreakCounter from '@/components/StreakCounter';
 import BadgeIcon from '@/components/BadgeIcon';
 import { sampleBadges } from '@/constants/SampleData';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/providers/AuthProvider/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
@@ -16,14 +17,15 @@ export default function ProfileScreen() {
   const colors = Colors[colorScheme];
   const { toggleTheme, isDarkMode } = useTheme();
   const router = useRouter();
+  const { logout, isAuthenticated, user: authUser } = useAuth();
   
-  // Mock user data
+  // Get user data from auth
   const user = {
-    name: 'Alex Johnson',
-    email: 'alex.johnson@example.com',
-    joinDate: '2023-06-15',
-    streakCount: 5,
-    totalPoints: 876,
+    name: authUser?.displayName || 'User',
+    email: authUser?.email || 'No email available',
+    joinDate: authUser?.metadata.creationTime || 'Unknown',
+    streakCount: 5, // You might want to get this from your database
+    totalPoints: 876, // You might want to get this from your database
   };
   
   // Settings state
@@ -54,7 +56,7 @@ export default function ProfileScreen() {
     }
   };
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Log Out',
       'Are you sure you want to log out?',
@@ -65,10 +67,11 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('isLoggedIn');
-              router.replace('/signIn');
+              await logout();
+              // No need to navigate here - the AuthProvider will handle the navigation
             } catch (error) {
               console.error('Error logging out:', error);
+              Alert.alert('Error', 'Failed to log out. Please try again.');
             }
           }
         }
@@ -102,34 +105,23 @@ export default function ProfileScreen() {
   );
   
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user.name.split(' ').map(n => n[0]).join('')}</Text>
-            </View>
-            <StreakCounter count={user.streakCount} size="small" showLabel={false} />
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            <Text style={styles.avatarText}>
+              {user.name.charAt(0).toUpperCase()}
+            </Text>
           </View>
-          
-          <View style={styles.profileInfo}>
-            <Text style={styles.userName}>{user.name}</Text>
-            <Text style={styles.userEmail}>{user.email}</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.totalPoints}</Text>
-                <Text style={styles.statLabel}>Points</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{sampleBadges.filter(b => b.unlocked).length}</Text>
-                <Text style={styles.statLabel}>Badges</Text>
-              </View>
-            </View>
+          <View style={styles.userInfo}>
+            <Text style={[styles.userName, { color: colors.text }]}>{user.name}</Text>
+            <Text style={[styles.userEmail, { color: colors.text }]}>{user.email}</Text>
+          </View>
+          <View style={styles.streakContainer}>
+            <StreakCounter count={user.streakCount} size="large" />
           </View>
         </View>
         
@@ -203,15 +195,10 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginRight: 20,
-  },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#2D5BFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -221,7 +208,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
   },
-  profileInfo: {
+  userInfo: {
     flex: 1,
     justifyContent: 'center',
   },
@@ -338,5 +325,10 @@ const styles = StyleSheet.create({
     color: '#E74C3C',
     fontSize: 16,
     fontWeight: '600',
+  },
+  streakContainer: {
+    position: 'absolute',
+    right: 20,
+    top: 20,
   },
 }); 

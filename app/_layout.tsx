@@ -13,6 +13,7 @@ import "react-native-reanimated";
 import { useColorScheme } from "@/components/useColorScheme";
 import { ThemeProvider } from "@/components/ThemeContext";
 import { AuthContextProvider, useAuth } from "@/providers/AuthProvider/useAuth";
+import Colors from "@/constants/Colors";
 
 export {
   ErrorBoundary,
@@ -59,82 +60,90 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [lastAuthState, setLastAuthState] = useState(isAuthenticated);
-  const currentPath = segments.join('/');
   const isNavigating = useRef(false);
-  const hasInitialized = useRef(false);
+  const initialAuthCheck = useRef(true);
+  const lastAuthState = useRef<{ isAuthenticated: boolean; path: string } | null>(null);
+  const colorScheme = useColorScheme();
 
+  // Hide header for auth screens
+  const isAuthScreen = segments[0] === '(auth)' || 
+                     segments[0] === 'signIn' || 
+                     segments[0] === 'signUp';
+
+  // Handle navigation based on auth state and current route
   useEffect(() => {
-    console.log("[RootLayoutNav] Current state:", {
-      currentPath,
-      isAuthenticated,
-      isLoading,
-      lastAuthState,
-      segments,
-      isNavigating: isNavigating.current,
-      hasInitialized: hasInitialized.current
-    });
-
-    // Don't do anything while loading or if we're already navigating
+    const currentPath = segments.join('/');
+    const currentAuthState = { isAuthenticated, path: currentPath };
+    
     if (isLoading || isNavigating.current) {
-      console.log("[RootLayoutNav] Skipping navigation - loading or already navigating");
       return;
     }
 
-    // Check if we're in the auth group
-    const inAppGroup = segments[0] === "(app)";
-    const isAuthScreen = segments[0] === "signIn" || segments[0] === "signUp";
+    const authStateChanged = !lastAuthState.current || 
+      lastAuthState.current.isAuthenticated !== isAuthenticated ||
+      lastAuthState.current.path !== currentPath;
 
-    console.log("[RootLayoutNav] Navigation check:", {
-      inAppGroup,
-      isAuthScreen,
-      shouldRedirectToHome: isAuthenticated && isAuthScreen,
-      shouldRedirectToSignIn: !isAuthenticated && inAppGroup
-    });
-
-    // If auth state changed, update last known state
-    if (isAuthenticated !== lastAuthState) {
-      console.log("[RootLayoutNav] Auth state changed, updating last known state");
-      setLastAuthState(isAuthenticated);
+    if (!authStateChanged) {
+      return;
     }
 
-    // Only handle navigation if we've initialized
-    if (hasInitialized.current) {
-      // Handle navigation based on auth state
+    lastAuthState.current = currentAuthState;
+
+    const inAuthGroup = segments[0] === 'signIn' || segments[0] === 'signUp';
+    const inAppGroup = segments[0] === '(app)';
+
+    const navigateTo = (path: string) => {
+      isNavigating.current = true;
+      router.replace(path);
+      
+      setTimeout(() => {
+        isNavigating.current = false;
+      }, 100);
+    };
+
+    if (initialAuthCheck.current) {
+      initialAuthCheck.current = false;
+      
       if (isAuthenticated) {
-        // If authenticated and on auth screen, redirect to home
-        if (isAuthScreen) {
-          console.log("[RootLayoutNav] Authenticated user on auth screen, redirecting to home");
-          isNavigating.current = true;
-          router.replace("/(app)/(tabs)");
-          return;
+        if (inAuthGroup) {
+          navigateTo('/(app)/(tabs)');
         }
       } else {
-        // If not authenticated and in app group, redirect to sign in
         if (inAppGroup) {
-          console.log("[RootLayoutNav] Unauthenticated user in app group, redirecting to sign in");
-          isNavigating.current = true;
-          router.replace("/signIn");
-          return;
+          navigateTo('/signIn');
         }
       }
-    } else {
-      hasInitialized.current = true;
+      return;
     }
 
-    console.log("[RootLayoutNav] No redirect needed");
-  }, [isAuthenticated, isLoading, segments, lastAuthState]);
+    if (isAuthenticated) {
+      if (inAuthGroup) {
+        navigateTo('/(app)/(tabs)');
+      }
+    } else {
+      if (inAppGroup) {
+        navigateTo('/signIn');
+      }
+    }
+  }, [isAuthenticated, isLoading, segments]);
 
-  // Reset navigation flag when segments change
-  useEffect(() => {
-    isNavigating.current = false;
-  }, [segments]);
-
-  // Show nothing while loading
-  if (isLoading) {
-    console.log("[RootLayoutNav] Loading state, showing nothing");
+  if (isLoading && initialAuthCheck.current) {
     return null;
   }
 
-  return <Stack />;
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{
+        headerShown: !isAuthScreen,
+        headerStyle: {
+          backgroundColor: Colors[colorScheme ?? 'light'].background,
+        },
+        headerTintColor: Colors[colorScheme ?? 'light'].text,
+      }}>
+        <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        <Stack.Screen name="signIn" options={{ headerShown: false }} />
+        <Stack.Screen name="signUp" options={{ headerShown: false }} />
+      </Stack>
+    </ThemeProvider>
+  );
 }
