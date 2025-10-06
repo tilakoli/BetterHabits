@@ -96,7 +96,7 @@ const SignIn = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.headerContainer}>
-            <Text style={[styles.title, { color: themeColors.text }]}>Welcome back</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Better Habits</Text>
             <Text style={[styles.subtitle, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
               Sign in to continue your journey
             </Text>

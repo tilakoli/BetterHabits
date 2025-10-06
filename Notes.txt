@@ -1,0 +1,13 @@
+// Challenges fetching is working
+// but the challenge joining isnt working, getting error from habitService.ts when tryig to join a challenge.
+//
+
+
+
+
+--------------- Next Steps -------------------
+
+1. Create the code base structure/outline to later analyze the codebase properly
+2. Summarize the core features added so far and cleanup any unnecessary codes.
+3. Summarize the features yet to be added and document everthing. 
+4. Work on the remaining updates needed so that the user can complete a challenge cycle. 

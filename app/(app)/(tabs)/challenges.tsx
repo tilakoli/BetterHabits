@@ -1,116 +1,188 @@
-import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Text, View, TransparentView } from '@/utils/components/Themed';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, View } from 'react-native';
+import { Text } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/utils/components/useColorScheme';
-import { ChallengeCard } from '@/components';
-import { sampleChallenges } from '@/constants/SampleData';
-import { Challenge } from '@/types';
+import ChallengeCard from '@/components/ChallengeCard/ChallengeCard';
+import { habitService } from '@/services/habitService';
+import { HabitTemplate } from '@/types';
+import { useAuth } from '@/providers/AuthProvider/useAuth';
 
-const CATEGORIES = ['All', 'Mindfulness', 'Fitness', 'Learning', 'Health'];
+const CATEGORIES = ['All', 'Fitness', 'Learning', 'Wellness', 'Health'];
 
 export default function ChallengesScreen() {
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
+  const { user } = useAuth();
   
-  const [challenges] = useState<Challenge[]>(sampleChallenges);
+  const [habits, setHabits] = useState<HabitTemplate[]>([]);
+  const [joinedHabitIds, setJoinedHabitIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [joinedChallenges, setJoinedChallenges] = useState<string[]>([]);
+  const [joiningHabit, setJoiningHabit] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
-  // Filter challenges based on search and category
-  const filteredChallenges = challenges.filter(challenge => {
-    const matchesSearch = challenge.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      challenge.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const loadData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [publicHabits, userActiveHabits] = await Promise.all([
+        habitService.getPublicHabits(),
+        habitService.getUserActiveChallenge(user.uid)
+      ]);
+      
+      setHabits(publicHabits);
+      const joinedIds = new Set(userActiveHabits?.map(h => h.habitId));
+      setJoinedHabitIds(joinedIds);
+      
+    } catch (err) {
+      console.error('Failed to load challenges data:', err);
+      setError('Failed to load challenges. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+  
+  // Filter habits based on search and category
+  const filteredHabits = habits.filter(habit => {
+    const matchesSearch = habit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      habit.description.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === 'All' || 
-      challenge.category.toLowerCase() === selectedCategory.toLowerCase();
+      habit.category.toLowerCase() === selectedCategory.toLowerCase();
     
     return matchesSearch && matchesCategory;
   });
   
-  const handleJoinChallenge = (challengeId: string) => {
-    setJoinedChallenges(prev => {
-      if (prev.includes(challengeId)) {
-        return prev.filter(id => id !== challengeId);
+  const handleJoinChallenge = async (challenge: HabitTemplate) => {
+    if (!user || joinedHabitIds.has(challenge.id)) return;
+    
+    try {
+      setJoiningHabit(challenge.id);
+      const result = await habitService.joinHabitChallenge(user.uid, challenge);
+      
+      if (result.success) {
+        setHabits(prev => 
+          prev.map(h => 
+            h.id === challenge.id 
+              ? { ...h, participantCount: (h.participantCount || 0) + 1 } 
+              : h
+          )
+        );
+        setJoinedHabitIds(prev => new Set(prev).add(challenge.id));
       } else {
-        return [...prev, challengeId];
+        setError(result.error || 'Failed to join challenge');
       }
-    });
+    } catch (err) {
+      console.error('Error joining challenge:', err);
+      setError('An error occurred. Please try again.');
+    } finally {
+      setJoiningHabit(null);
+    }
   };
+  
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+  
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
+        <TouchableOpacity 
+          style={[styles.retryButton, { backgroundColor: colors.primary }]} 
+          onPress={loadData}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   
   return (
     <View style={styles.container}>
       <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
-        <FontAwesome name="search" size={16} color={colorScheme === 'dark' ? '#999' : '#999'} style={styles.searchIcon} />
+        <FontAwesome name="search" size={16} color={colors.text} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search challenges..."
+          placeholderTextColor={colors.text}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#999"
         />
       </View>
       
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}
-        style={styles.categoriesScroll}
-      >
-        {CATEGORIES.map(category => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryButton,
-              { 
-                backgroundColor: selectedCategory === category ? colors.primary : colors.card,
-                borderColor: selectedCategory === category ? colors.primary : colorScheme === 'dark' ? '#444' : '#DDD',
-              }
-            ]}
-            onPress={() => setSelectedCategory(category)}
-          >
-            <Text 
+      <View style={styles.categoriesContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesScroll}
+        >
+          {CATEGORIES.map(category => (
+            <TouchableOpacity
+              key={category}
               style={[
-                styles.categoryText,
-                { color: selectedCategory === category ? 'white' : colors.text }
+                styles.categoryButton,
+                { 
+                  backgroundColor: selectedCategory === category ? colors.primary : colors.card,
+                  borderColor: colors.border,
+                }
               ]}
+              onPress={() => setSelectedCategory(category)}
             >
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <Text 
+                style={[
+                  styles.categoryText,
+                  { 
+                    color: selectedCategory === category ? '#FFF' : colors.text,
+                    opacity: selectedCategory === category ? 1 : 0.8
+                  }
+                ]}
+              >
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
       
       <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.challengesContainer}
+        contentContainerStyle={styles.challengesContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{selectedCategory} Challenges</Text>
-          {filteredChallenges.length > 0 ? (
-            filteredChallenges.map(challenge => (
-              <ChallengeCard
-                key={challenge.id}
-                challenge={challenge}
-                onJoin={() => handleJoinChallenge(challenge.id)}
-                isJoined={joinedChallenges.includes(challenge.id)}
-              />
-            ))
-          ) : (
-            <View style={[
-              styles.emptyStateContainer, 
-              { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }
-            ]}>
-              <FontAwesome name="search" size={50} color={colors.primary} />
-              <Text style={[styles.emptyStateText, { color: colorScheme === 'dark' ? '#999' : '#666' }]}>
-                No challenges found matching your criteria
-              </Text>
-            </View>
-          )}
-        </View>
+        {filteredHabits.length === 0 ? (
+          <View style={styles.emptyState}>
+            <FontAwesome name="search" size={48} color={colors.text} style={styles.emptyIcon} />
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No challenges found. Try a different search or category.
+            </Text>
+          </View>
+        ) : (
+          filteredHabits.map(habit => (
+            <ChallengeCard
+              key={habit.id}
+              challenge={habit}
+              onJoin={handleJoinChallenge}
+              isJoining={joiningHabit === habit.id}
+              isJoined={joinedHabitIds.has(habit.id)}
+              featured={false} // Set based on your logic
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -119,81 +191,88 @@ export default function ChallengesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    margin: 16,
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    marginTop: 16,
+    marginBottom: 16,
+    height: 48,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 12,
+    opacity: 0.5,
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: '100%',
     fontSize: 16,
   },
-  categoriesScroll: {
-    flexGrow: 0,
-  },
   categoriesContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 50,
+    marginBottom: 16,
+  },
+  categoriesScroll: {
+    paddingHorizontal: 4,
   },
   categoryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 10,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 40,
-    minWidth: 80,
-    flexShrink: 0,
+    marginRight: 8,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
   },
-  scrollView: {
+  challengesContainer: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 20,
+  challengesContent: {
+    paddingBottom: 24,
   },
-  section: {
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    marginTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  emptyStateContainer: {
-    alignItems: 'center',
+  emptyState: {
+    flex: 1,
     justifyContent: 'center',
-    padding: 30,
-    borderRadius: 12,
+    alignItems: 'center',
+    paddingTop: 80,
   },
-  emptyStateText: {
+  emptyIcon: {
+    opacity: 0.3,
+    marginBottom: 16,
+  },
+  emptyText: {
     fontSize: 16,
     textAlign: 'center',
-    marginTop: 16,
+    opacity: 0.7,
+    paddingHorizontal: 40,
   },
-}); 
+});

@@ -5,23 +5,24 @@ import { FontAwesome } from '@expo/vector-icons';
 import { Text, View, Card, TransparentView } from '@/utils/components/Themed';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/utils/components/useColorScheme';
-import { Challenge } from '@/types';
+import { HabitTemplate } from '@/types';
 
 interface ChallengeCardProps {
-  challenge: Challenge;
-  onJoin?: (id: string) => void;
+  challenge: HabitTemplate;
+  onJoin?: (challenge: HabitTemplate) => Promise<void>;
+  isJoining?: boolean;
   isJoined?: boolean;
   featured?: boolean;
 }
 
 const getDifficultyColor = (difficulty: string, colors: any) => {
-  switch (difficulty) {
+  switch (difficulty.toLowerCase()) {
     case 'easy':
       return colors.secondary;
     case 'medium':
       return colors.accent;
     case 'hard':
-      return '#e74c3c'; // a red color for hard
+      return '#e74c3c';
     default:
       return colors.secondary;
   }
@@ -30,10 +31,10 @@ const getDifficultyColor = (difficulty: string, colors: any) => {
 const ChallengeCard: React.FC<ChallengeCardProps> = ({ 
   challenge, 
   onJoin,
-  isJoined: isJoinedProp = false,
+  isJoining = false,
+  isJoined = false,
   featured = false
 }) => {
-  const [isJoined, setIsJoined] = useState(isJoinedProp);
   const router = useRouter();
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
@@ -45,23 +46,20 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
     router.push(`/habit/${challenge.id}`);
   };
   
-  const handleJoin = () => {
-    if (!isJoined) {
-      setIsJoined(true);
-      if (onJoin) {
-        onJoin(challenge.id);
-      }
+  const handleJoin = async () => {
+    if (!isJoined && onJoin) {
+      await onJoin(challenge);
     }
   };
   
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
-      case 'mindfulness':
-        return 'leaf';
       case 'fitness':
         return 'heartbeat';
       case 'learning':
         return 'book';
+      case 'wellness':
+        return 'leaf';
       case 'health':
         return 'medkit';
       default:
@@ -73,12 +71,13 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
     <TouchableOpacity 
       onPress={handlePress}
       activeOpacity={0.8}
+      disabled={isJoining}
     >
       <Card style={[
         styles.container, 
-        challenge.featured && styles.featuredContainer
+        featured && styles.featuredContainer
       ]}>
-        {challenge.featured && (
+        {featured && (
           <View style={styles.featuredBadge}>
             <Text style={styles.featuredText}>Featured</Text>
           </View>
@@ -100,34 +99,48 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
           </View>
         </TransparentView>
         
-        <Text style={styles.title}>{challenge.name}</Text>
-        <Text style={[styles.description, { color: colorScheme === 'dark' ? '#AAA' : '#666' }]}>
+        <Text style={[styles.title, { color: colors.text }]}>{challenge.name}</Text>
+        <Text 
+          style={[styles.description, { color: colorScheme === 'dark' ? '#BBB' : '#666' }]}
+          numberOfLines={2}
+        >
           {challenge.description}
         </Text>
         
         <TransparentView style={styles.footer}>
           <TransparentView style={styles.statsContainer}>
-            <TransparentView style={styles.stat}>
-              <FontAwesome name="calendar" size={14} color={colors.text} />
-              <Text style={styles.statText}>{challenge.duration} days</Text>
+            <TransparentView style={styles.statItem}>
+              <FontAwesome name="calendar" size={14} color={colors.primary} />
+              <Text style={[styles.statText, { color: colorScheme === 'dark' ? '#AAA' : '#666' }]}>
+                {challenge.duration} days
+              </Text>
             </TransparentView>
-            <TransparentView style={styles.stat}>
-              <FontAwesome name="users" size={14} color={colors.text} />
-              <Text style={styles.statText}>{challenge.participationCount.toLocaleString()}</Text>
+            <TransparentView style={styles.statItem}>
+              <FontAwesome name="users" size={14} color={colors.primary} />
+              <Text style={[styles.statText, { color: colorScheme === 'dark' ? '#AAA' : '#666' }]}>
+                {challenge.participantCount || 0} joined
+              </Text>
             </TransparentView>
           </TransparentView>
           
           <TouchableOpacity 
             style={[
               styles.joinButton, 
-              { backgroundColor: isJoined ? colors.secondary : colors.primary }
+              { 
+                backgroundColor: isJoined ? colors.secondary : colors.primary,
+                opacity: isJoining ? 0.7 : 1
+              }
             ]}
             onPress={handleJoin}
-            disabled={isJoined}
+            disabled={isJoined || isJoining}
           >
-            <Text style={styles.joinButtonText}>
-              {isJoined ? 'Joined' : 'Join'}
-            </Text>
+            {isJoining ? (
+              <Text style={styles.joinButtonText}>Joining...</Text>
+            ) : (
+              <Text style={styles.joinButtonText}>
+                {isJoined ? 'Joined' : 'Join Challenge'}
+              </Text>
+            )}
           </TouchableOpacity>
         </TransparentView>
       </Card>
@@ -140,69 +153,63 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    position: 'relative',
+    overflow: 'hidden',
   },
   featuredContainer: {
-    borderWidth: 2,
-    borderColor: '#2D5BFF',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    position: 'relative',
   },
   featuredBadge: {
     position: 'absolute',
-    top: -24,
-    right: 10,
-    backgroundColor: '#2D5BFF',
-    paddingHorizontal: 10,
+    top: 10,
+    right: -25,
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 30,
     paddingVertical: 4,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    transform: [{ rotate: '45deg' }],
   },
   featuredText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#000',
     fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   categoryContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
   category: {
     fontSize: 14,
-    textTransform: 'capitalize',
-    color: '#555',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   difficultyBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   difficultyText: {
-    color: 'white',
+    color: '#FFF',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '600',
     textTransform: 'capitalize',
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '700',
+    marginBottom: 6,
   },
   description: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
     lineHeight: 20,
+    marginBottom: 16,
   },
   footer: {
     flexDirection: 'row',
@@ -211,29 +218,27 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 16,
+    alignItems: 'center',
   },
-  stat: {
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    marginRight: 16,
   },
   statText: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 13,
+    marginLeft: 4,
   },
   joinButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   joinButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontWeight: '600',
     fontSize: 14,
   },
 });
 
-export default ChallengeCard; 
+export default ChallengeCard;

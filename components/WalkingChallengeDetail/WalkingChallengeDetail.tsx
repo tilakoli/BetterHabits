@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -11,17 +11,31 @@ import { formatDate } from '@/utils/dateUtils';
 import { Habit, Challenge } from '@/types';
 
 interface WalkingChallengeDetailProps {
-  challenge: Challenge;
+  challenge: Challenge | null;
   habit?: Habit | null;
   onJoinChallenge: () => void;
   isJoined: boolean;
 }
 
+// Default challenge values
+const defaultChallenge: Partial<Challenge> = {
+  name: 'Walking Challenge',
+  description: 'Complete daily step goals to complete this challenge',
+  currentProgress: 0,
+  goal: 10000,
+  duration: 30,
+  difficulty: 'medium',
+  category: 'Fitness',
+  participationCount: 0,
+  startDate: new Date(),
+  endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+};
+
 const WalkingChallengeDetail: React.FC<WalkingChallengeDetailProps> = ({
-  challenge,
+  challenge: propChallenge,
   habit,
   onJoinChallenge,
-  isJoined
+  isJoined,
 }) => {
   const [stepGoal, setStepGoal] = useState(10000);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -29,7 +43,14 @@ const WalkingChallengeDetail: React.FC<WalkingChallengeDetailProps> = ({
   const [currentSteps, setCurrentSteps] = useState(0);
   const [dailyHistory, setDailyHistory] = useState<Record<string, number>>({});
   const [challengeStarted, setChallengeStarted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
+  // Merge default values with the provided challenge
+  const challenge = {
+    ...defaultChallenge,
+    ...propChallenge,
+  } as Challenge;
+
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   const router = useRouter();
@@ -44,6 +65,7 @@ const WalkingChallengeDetail: React.FC<WalkingChallengeDetailProps> = ({
   useEffect(() => {
     const loadSavedData = async () => {
       try {
+        setIsLoading(true);
         // Load step goal
         const savedGoal = await AsyncStorage.getItem(STEP_GOAL_KEY);
         if (savedGoal) {
@@ -69,6 +91,8 @@ const WalkingChallengeDetail: React.FC<WalkingChallengeDetailProps> = ({
         }
       } catch (e) {
         console.error('Failed to load saved data', e);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -194,6 +218,18 @@ const WalkingChallengeDetail: React.FC<WalkingChallengeDetailProps> = ({
     return (daysCompleted / challenge.duration) * 100;
   };
   
+  // Show loading state
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Loading challenge details...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -471,6 +507,15 @@ const styles = StyleSheet.create({
   detailDivider: {
     height: 1,
     backgroundColor: '#ddd',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
   },
 });
 
