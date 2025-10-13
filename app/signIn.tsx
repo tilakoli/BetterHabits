@@ -72,6 +72,29 @@ const SignIn = () => {
     }
   };
 
+  const handleDevLogin2 = async () => {
+    try {
+      const result = await signIn({
+        email: 'tilakoli@email.com',
+        password: 'test1234'
+      });
+
+      if (!result.success) {
+        showAlert({
+          title: 'Error',
+          message: result.error || 'Failed to log in with test account',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      showAlert({
+        title: 'Error',
+        message: 'An unexpected error occurred',
+        type: 'error'
+      });
+    }
+  };
+
   const navigateToForgotPassword = () => {
     showAlert({
       title: 'Coming Soon',
@@ -168,6 +191,30 @@ const SignIn = () => {
                 <Button
                   title="Use Test Account"
                   onPress={handleDevLogin}
+                  variant="outline"
+                  style={[
+                    styles.socialButton,
+                    {
+                      backgroundColor: themeColors.card,
+                      borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0',
+                    }
+                  ] as any}
+                  textStyle={[
+                    styles.socialButtonText,
+                    { color: themeColors.text }
+                  ] as any}
+                  leftIcon={
+                    <FontAwesome 
+                      name="user" 
+                      size={18} 
+                      color={themeColors.primary} 
+                      style={{ marginRight: 8 }} 
+                    />
+                  }
+                />
+ <Button
+                  title="Use Test Account 2"
+                  onPress={handleDevLogin2}
                   variant="outline"
                   style={[
                     styles.socialButton,

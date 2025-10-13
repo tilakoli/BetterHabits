@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, View } from 'react-native';
 import { Text } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
@@ -37,7 +38,7 @@ export default function ChallengesScreen() {
       ]);
       
       setHabits(publicHabits);
-      const joinedIds = new Set(userActiveHabits?.map(h => h.habitId));
+      const joinedIds = new Set(userActiveHabits ? [userActiveHabits.habitId] : []);
       setJoinedHabitIds(joinedIds);
       
     } catch (err) {
@@ -51,6 +52,13 @@ export default function ChallengesScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Refresh when screen comes into focus (e.g., after giving up a challenge)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
   
   // Filter habits based on search and category
   const filteredHabits = habits.filter(habit => {

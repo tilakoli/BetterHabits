@@ -1,29 +1,123 @@
-# HabitPro - Data Architecture
+# HabitPro 🏃‍♂️
 
-## Core Data Models
+A modern React Native habit tracking application built with Expo and Firebase. Track your daily habits, join challenges, and build lasting positive routines.
 
-### 1. User Profile (`UserProfile`)
-The central entity representing a user in the system.
+## 🚀 Features
 
+- **User Authentication** - Secure sign up/sign in with Firebase Auth
+- **Challenge System** - Browse and join habit challenges
+- **Daily Progress Tracking** - Simple yes/no completion tracking
+- **Streak Counter** - Track your consistency
+- **Dark/Light Theme** - Beautiful UI with theme support
+- **Real-time Updates** - Live data synchronization with Firebase
+- **Single Active Challenge** - Focus on one habit at a time
+
+## 🏗️ Architecture
+
+### Technology Stack
+- **Framework**: React Native with Expo Router
+- **Language**: TypeScript
+- **Backend**: Firebase (Firestore, Authentication)
+- **State Management**: React Context API
+- **Navigation**: Expo Router (file-based routing)
+- **UI**: Custom themed components
+- **Forms**: Formik + Yup validation
+- **Icons**: Expo Vector Icons (FontAwesome)
+
+### Key Architecture Patterns
+- **Authentication Flow**: User → AuthProvider → Firebase Auth → Protected Routes
+- **Data Flow**: UI Components → Services → Firebase Firestore → State Updates
+- **Single Active Challenge**: Users can only have one active challenge at a time
+
+## 📁 Project Structure
+
+```
+HabitPro/
+├── 📱 app/                          # Expo Router pages (file-based routing)
+│   ├── _layout.tsx                  # Root layout with auth & theme providers
+│   ├── index.tsx                    # Entry point (redirects to auth/app)
+│   ├── signIn.tsx                   # Authentication screens
+│   ├── signUp.tsx
+│   └── (app)/                       # Protected app routes
+│       ├── _layout.tsx              # App layout wrapper
+│       ├── (tabs)/                  # Tab navigation
+│       │   ├── _layout.tsx          # Tab bar configuration
+│       │   ├── index.tsx            # Home screen
+│       │   ├── challenges.tsx       # Challenges browser
+│       │   └── profile.tsx          # User profile
+│       ├── habit/[id].tsx           # Dynamic habit detail pages
+│       └── personalInfo.tsx         # User settings
+│
+├── 🧩 components/                   # Reusable UI components
+│   ├── BadgeIcon/                   # Badge display component
+│   ├── Button/                      # Custom button component
+│   ├── CalendarView/                # Calendar for progress tracking
+│   ├── ChallengeCard/               # Challenge display card
+│   ├── CustomAlert/                 # Alert dialogs
+│   ├── HabitCard/                   # Habit display card
+│   ├── InputField/                  # Form input component
+│   ├── ProgressCircle/              # Circular progress indicator
+│   ├── StepCounter/                 # Step counting component
+│   ├── StepGoalModal/               # Goal setting modal
+│   ├── StreakCounter/               # Streak display component
+│   └── index.ts                     # Component exports
+│
+├── 🔧 services/                     # Business logic & API calls
+│   └── habitService.ts              # Firebase operations for habits
+│
+├── 🔐 providers/                    # Context providers
+│   └── AuthProvider/
+│       ├── useAuth.tsx              # Authentication context
+│       └── types.ts                 # Auth-related types
+│
+├── 📊 types/                        # TypeScript type definitions
+│   └── index.ts                     # All app types & interfaces
+│
+├── 🎨 constants/                    # App constants & sample data
+│   ├── Colors.ts                    # Theme color definitions
+│   └── SampleData.ts                # Mock data for development
+│
+├── 🛠️ utils/                        # Utility functions & helpers
+│   ├── components/                  # Themed component utilities
+│   │   ├── ThemeContext.tsx         # Theme management
+│   │   ├── Themed.tsx               # Themed base components
+│   │   ├── StyledText.tsx           # Custom text component
+│   │   └── useColorScheme.ts        # Color scheme hook
+│   ├── forms/                       # Form utilities
+│   │   ├── BaseForm.tsx             # Base form component
+│   │   └── validationSchemas.ts     # Yup validation schemas
+│   ├── dateUtils.ts                 # Date manipulation utilities
+│   └── habitUtils.ts                # Habit-related utilities
+│
+├── 🔥 firebaseConfig.js             # Firebase configuration
+├── 📦 package.json                  # Dependencies & scripts
+├── ⚙️ app.json                      # Expo configuration
+└── 📝 README.md                     # Project documentation
+```
+
+## 🗄️ Data Models
+
+### Core Entities
+
+#### UserProfile
 ```typescript
 interface UserProfile {
-  uid: string;                     // Unique user ID (from auth provider)
+  uid: string;                     // Unique user ID
   email: string;
   displayName: string;
   profilePicture?: string;
-  createdAt: any;                 // Timestamp of account creation
+  createdAt: any;
   stats: {
     totalHabitsCompleted: number;
     totalHabitsStarted: number;
-    longestStreak: number;
     currentActiveHabits: number;
     totalDaysTracked: number;
   };
-  habits: Record<string, HabitParticipation>; // User's habit participations
+  habits: Record<string, HabitParticipation>;
   settings: {
     notifications: {
       dailyReminder: boolean;
-      reminderTime: string;      // 'HH:mm' format
+      reminderTime: string;
       streakCelebration: boolean;
       weeklyProgress: boolean;
     };
@@ -35,22 +129,21 @@ interface UserProfile {
 }
 ```
 
-### 2. Habit Template (`HabitTemplate`)
-Blueprint for creating habits or challenges.
-
+#### HabitTemplate
 ```typescript
 interface HabitTemplate {
   id: string;
   name: string;
   description: string;
   category: string;
-  duration: number;              // in days
+  type: ChallengeType;
+  duration: number; // in days
   dailyGoal: {
     type: 'number' | 'boolean' | 'time';
     target: number;
-    unit: string;                // e.g., 'steps', 'minutes', 'times'
+    unit: string;
   };
-  createdBy: string;             // 'admin' or user ID
+  createdBy: string;
   isPublic: boolean;
   difficulty: 'easy' | 'medium' | 'hard';
   icon: string;
@@ -61,103 +154,177 @@ interface HabitTemplate {
 }
 ```
 
-### 3. Challenge (`Challenge`)
-Extends HabitTemplate with challenge-specific properties.
-
-```typescript
-interface Challenge extends Omit<HabitTemplate, 'id' | 'createdBy' | 'isPublic' | 'createdAt' | 'participantCount'> {
-  id: string;
-  currentProgress: number;
-  goal: number;
-  startDate: any;
-  endDate: any;
-  participants: number;
-  isJoined?: boolean;
-}
-```
-
-### 4. Habit Participation (`HabitParticipation`)
-Tracks a user's engagement with a specific habit/challenge.
-
+#### HabitParticipation
 ```typescript
 interface HabitParticipation {
-  id?: string;                   // Participation ID (document key)
-  habitId: string;               // Reference to HabitTemplate/Challenge
-  habitName: string;             // Cached for quick access
+  id?: string;
+  habitId: string;
+  habitName: string;
+  habitType: ChallengeType;
   startDate: any;
   endDate: any;
+  duration: number;
   isActive: boolean;
   isCompleted: boolean;
-  currentStreak: number;
-  longestStreak: number;
   totalCompletedDays: number;
   totalDays: number;
   completionRate: number;
   lastUpdated: any;
-  completedAt?: any;
-  dailyProgress: Record<string, DailyProgress>; // Date string as key
+  completedDate?: any;
+  dailyProgress: Record<string, DailyProgress>;
 }
 ```
 
-### 5. Daily Progress (`DailyProgress`)
-Tracks daily completion status and metrics.
+### Key Relationships
+- **User → HabitParticipation** (One-to-Many)
+- **HabitTemplate → Challenge** (One-to-One)
+- **HabitParticipation → DailyProgress** (One-to-Many)
 
-```typescript
-interface DailyProgress {
-  completed: boolean;
-  value: number;                 // Actual value achieved (e.g., steps taken)
-  goal: number;                 // Target value for the day
-  timestamp: any;
-  note?: string;
-}
-```
+## 🚀 Getting Started
 
-## Data Relationships
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator (for iOS development)
+- Android Studio (for Android development)
 
-### User to Habit Participation (One-to-Many)
-- Each `UserProfile` can have multiple `HabitParticipation` records
-- Stored in `UserProfile.habits` as a map with participation IDs as keys
+### Installation
 
-### Habit Template to Challenge (One-to-One)
-- `Challenge` extends `HabitTemplate` with additional properties
-- Challenges are specialized habit templates with tracking capabilities
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd HabitPro
+   ```
 
-### Habit Participation to Daily Progress (One-to-Many)
-- Each `HabitParticipation` contains multiple `DailyProgress` records
-- Stored as a map with date strings as keys
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## Data Flow
+3. **Set up Firebase**
+   - Create a Firebase project
+   - Enable Authentication and Firestore
+   - Copy your Firebase config to `firebaseConfig.js`
+   - Set up environment variables for Firebase keys
 
-1. **Habit/Challenge Discovery**
-   - Users browse available `HabitTemplate` and `Challenge` instances
-   - Public templates can be seen by all users
+4. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-2. **Participation**
-   - When a user starts a habit/challenge, a `HabitParticipation` record is created
-   - The `participantCount` on the template/challenge is incremented
+### Available Scripts
 
-3. **Daily Tracking**
-   - Users log progress through `DailyProgress` records
-   - Streaks and completion rates are calculated and updated
+- `npm start` - Start Expo development server
+- `npm run android` - Run on Android device/emulator
+- `npm run ios` - Run on iOS device/simulator
+- `npm run web` - Run web version
+- `npm test` - Run Jest tests
+- `npm run build:apk` - Build Android APK
+- `npm run build:app-bundle` - Build Android App Bundle
 
-4. **Completion**
-   - When a habit/challenge is completed, `isCompleted` is set to true
-   - User statistics are updated in their profile
+## 🔧 Development
 
-## Example Scenarios
+### Key Features Implementation
 
-### Starting a New Habit
-1. User selects a `HabitTemplate`
-2. System creates a `HabitParticipation` record
-3. Daily tracking begins with `DailyProgress` entries
+#### Authentication
+- Firebase Authentication with email/password
+- Persistent login state with AsyncStorage
+- Automatic navigation based on auth state
 
-### Joining a Challenge
-1. User selects a `Challenge`
-2. System creates a `HabitParticipation` with challenge-specific settings
-3. User's progress is tracked against the challenge's duration and goals
+#### Challenge System
+- Browse public habit templates
+- Join challenges (one at a time)
+- Track daily progress
+- View completion statistics
 
-### Tracking Progress
-1. User logs daily progress
-2. System updates the corresponding `DailyProgress`
-3. Streaks and completion metrics are recalculated
-4. User's statistics in `UserProfile` are updated
+#### Data Management
+- Real-time Firestore integration
+- Optimistic UI updates
+- Error handling and retry logic
+
+### Code Structure
+
+#### Components
+- **Reusable UI components** in `/components`
+- **Themed components** with dark/light mode support
+- **Type-safe props** with TypeScript interfaces
+
+#### Services
+- **Centralized business logic** in `/services`
+- **Firebase operations** abstracted into service functions
+- **Error handling** and response formatting
+
+#### State Management
+- **React Context** for global state
+- **Local state** for component-specific data
+- **Custom hooks** for reusable logic
+
+## 🎨 Theming
+
+The app supports both light and dark themes with:
+- **Dynamic color switching**
+- **System preference detection**
+- **Consistent theming** across all components
+- **Custom color palette** defined in `constants/Colors.ts`
+
+## 📱 Platform Support
+
+- **iOS** - Native iOS app
+- **Android** - Native Android app
+- **Web** - Progressive Web App (PWA)
+
+## 🔒 Security
+
+- **Firebase Authentication** for user management
+- **Firestore Security Rules** for data protection
+- **Input validation** with Yup schemas
+- **Secure API key management** with environment variables
+
+## 🧪 Testing
+
+- **Jest** for unit testing
+- **React Native Testing Library** for component testing
+- **Expo testing utilities** for integration testing
+
+## 📦 Dependencies
+
+### Core Dependencies
+- `expo` (~53.0.4) - React Native framework
+- `react` (19.0.0) - React library
+- `react-native` (0.79.1) - React Native
+- `firebase` (^11.9.0) - Backend services
+- `expo-router` (~5.0.3) - Navigation
+
+### UI & Forms
+- `formik` (^2.4.6) - Form handling
+- `yup` (^1.6.1) - Validation schemas
+- `@expo/vector-icons` (^14.1.0) - Icon library
+- `react-native-svg` (^15.11.2) - SVG support
+
+### Development
+- `typescript` (~5.8.3) - Type safety
+- `jest` (^29.2.1) - Testing framework
+- `@types/react` (~19.0.10) - TypeScript definitions
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Authors
+
+- **Kagami** - *Initial work* - [GitHub](https://github.com/kagami14)
+
+## 🙏 Acknowledgments
+
+- Expo team for the amazing React Native framework
+- Firebase team for the backend services
+- React Native community for the ecosystem

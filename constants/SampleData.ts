@@ -14,28 +14,7 @@ export const sampleChallenges: Challenge[] = [ // Challenges Screen
   },
 ];
 
-export const sampleHabits: Habit[] = [ // Home
-  // {
-  //   id: '1',
-  //   name: 'Morning Meditation',
-  //   type: 'guided',
-  //   category: 'mindfulness',
-  //   frequency: 'daily',
-  //   duration: 21,
-  //   startDate: formatDate(new Date()),
-  //   progress: {
-  //     daysCompleted: 5,
-  //     currentStreak: 5,
-  //     bestStreak: 7,
-  //     completionHistory: {},
-  //   },
-  //   reminderTime: '08:00',
-  //   rewards: {
-  //     badges: ['first-day', 'first-week'],
-  //     points: 150,
-  //   },
-  // },
-];
+export const sampleHabits: Habit[] = [];
 
 
 export const sampleBadges = [

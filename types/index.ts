@@ -1,23 +1,23 @@
 // Core Types
 export type GoalType = 'number' | 'boolean' | 'time';
 export type Difficulty = 'easy' | 'medium' | 'hard';
-export type ChallengeType = 'reading' | 'running' | 'meditation' | 'water' | 'exercise' | 'generic';
+export type ChallengeType = 'walking' | 'reading' | 'running' | 'meditation' | 'water' | 'exercise' | 'generic';
 
-// Daily Progress - Updated for simplified tracking
+// Daily Progress - Updated for challenge-specific tracking
 export interface DailyProgress {
   completed: boolean;
   timestamp: any;
-  data?: any; // For future challenge-specific data (e.g., reflection notes, timer data)
+  data?: ChallengeProgressData; // Typed challenge-specific data
 }
 
-// Legacy DailyProgress (keep for backward compatibility if needed)
-export interface LegacyDailyProgress {
-  completed: boolean;
-  value: number;
-  goal: number;
-  timestamp: any;
-  note?: string;
-}
+// Challenge-specific progress data
+export type ChallengeProgressData = 
+  | { type: 'walking'; steps: number }
+  | { type: 'reading'; pagesRead: number; reflection?: string; bookName?: string }
+  | { type: 'meditation'; minutes: number; notes?: string }
+  | { type: 'water'; glasses: number; ml?: number }
+  | { type: 'exercise'; reps: number; difficulty?: string; notes?: string }
+  | { type: 'generic' }; // For simple yes/no
 
 // Habit Template (challenge) - Updated with type field
 export interface HabitTemplate {
@@ -47,6 +47,21 @@ export interface HabitTemplate {
   createdAt: any;
   participantCount: number;
   tags: string[];
+}
+
+export interface ChallengeInputConfig {
+  fields: ChallengeField[];
+  initialPrompt?: string; // e.g., "What book are you reading?"
+}
+
+export interface ChallengeField {
+  name: string;
+  label: string;
+  type: 'number' | 'text' | 'textarea' | 'time';
+  required: boolean;
+  placeholder?: string;
+  min?: number;
+  max?: number;
 }
 
 // Challenge Type (for walking challenges and similar)
@@ -84,24 +99,6 @@ export interface HabitParticipation {
   // completedAt?: any;
 }
 
-// Legacy HabitParticipation (keep for backward compatibility if needed)
-export interface LegacyHabitParticipation {
-  id?: string;
-  habitId: string;
-  habitName: string;
-  startDate: any;
-  endDate: any;
-  isActive: boolean;
-  isCompleted: boolean;
-  currentStreak: number;
-  longestStreak: number;
-  totalCompletedDays: number;
-  totalDays: number;
-  completionRate: number;
-  lastUpdated: any;
-  completedAt?: any;
-  dailyProgress: Record<string, LegacyDailyProgress>;
-}
 
 // User Profile - Updated stats
 export interface UserProfile {

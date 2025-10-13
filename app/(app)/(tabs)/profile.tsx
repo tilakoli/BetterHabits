@@ -121,7 +121,7 @@ export default function ProfileScreen() {
             <Text style={[styles.userEmail, { color: colors.text }]}>{user.email}</Text>
           </View>
           <View style={styles.streakContainer}>
-            <StreakCounter count={user.streakCount} size="large" />
+            <StreakCounter count={user.streakCount} size="small" />
           </View>
         </View>
         

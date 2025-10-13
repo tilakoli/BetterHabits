@@ -12,8 +12,8 @@ import {
   where,
   writeBatch
 } from 'firebase/firestore';
-import { HabitTemplate, HabitParticipation, UserProfile } from '@/types';
-import { v4 as uuidv4 } from 'uuid';
+import { HabitTemplate, HabitParticipation, UserProfile, DailyProgress } from '@/types';
+import * as Crypto from 'expo-crypto';
 
 const HABITS_COLLECTION = 'habits';
 const USER_HABIT_PARTICIPATION_COLLECTION = 'user_habit_participation';
@@ -104,7 +104,7 @@ export const habitService = {
     }
 
     const batch = writeBatch(DB);
-    const participationId = uuidv4();
+    const participationId = Crypto.randomUUID();
     const now = new Date();
     const startDate = Timestamp.fromDate(now);
     const endDate = Timestamp.fromDate(new Date(now.getTime() + (habitTemplate.duration * 24 * 60 * 60 * 1000)));
@@ -188,12 +188,11 @@ export const habitService = {
       }
 
       // Update progress for the specific date
-      const progressEntry = {
-        completed,
-        timestamp: Timestamp.now(),
-        ...(additionalData && { data: additionalData })
-      };
-
+   const progressEntry: DailyProgress = {
+  completed,
+  timestamp: Timestamp.now(),
+  ...(additionalData && { data: additionalData }) // Store challenge-specific data
+};
       // Calculate new completion stats
       const updatedDailyProgress = {
         ...challenge.dailyProgress,
@@ -308,6 +307,59 @@ export const habitService = {
     } catch (error) {
       console.error('Error getting challenge progress:', error);
       return { challenge: null, progressDays: [] };
+    }
+  },
+
+  // Give up on a challenge
+  async giveUpChallenge(
+    userId: string,
+    participationId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const userRef = doc(DB, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        return { success: false, error: 'User not found' };
+      }
+
+      const userData = userSnap.data() as UserProfile;
+      const challenge = userData.habits?.[participationId];
+      
+      if (!challenge) {
+        return { success: false, error: 'Challenge not found' };
+      }
+
+      if (!challenge.isActive) {
+        return { success: false, error: 'Challenge is not active' };
+      }
+
+      const batch = writeBatch(DB);
+
+      // Update user document - mark challenge as inactive
+      batch.update(userRef, {
+        [`habits.${participationId}.isActive`]: false,
+        [`habits.${participationId}.gaveUpDate`]: Timestamp.now(),
+        'stats.currentActiveHabits': increment(-1)
+      });
+
+      // Update cross-reference document
+      const crossRefRef = doc(DB, USER_HABIT_PARTICIPATION_COLLECTION, `${userId}_${challenge.habitId}`);
+      batch.update(crossRefRef, {
+        isActive: false,
+        gaveUpDate: Timestamp.now()
+      });
+
+      // Decrement habit participant count
+      const habitRef = doc(DB, HABITS_COLLECTION, challenge.habitId);
+      batch.update(habitRef, { participantCount: increment(-1) });
+
+      await batch.commit();
+      return { success: true };
+
+    } catch (error) {
+      console.error('Error giving up challenge:', error);
+      return { success: false, error: 'Failed to give up challenge.' };
     }
   }
 };

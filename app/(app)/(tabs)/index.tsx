@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/utils/components/Themed';
 import { useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/utils/components/useColorScheme';
-import { HabitCard, StreakCounter } from '@/components';
+import { HabitCard, StreakCounter, ChallengeCard } from '@/components';
 import { getGreeting } from '@/utils/dateUtils';
 import { getRandomMotivationalQuote } from '@/utils/habitUtils';
-import { sampleHabits } from '@/constants/SampleData';
 import { completeHabitForToday } from '@/utils/habitUtils';
-import { Habit } from '@/types';
+import { Habit, HabitTemplate, HabitParticipation } from '@/types';
 import { useAuth } from '@/providers/AuthProvider/useAuth';
+import { habitService } from '@/services/habitService';
 
 export default function HomeScreen() {
   const { user, userData } = useAuth();
@@ -19,7 +20,10 @@ export default function HomeScreen() {
   const colors = Colors[colorScheme];
   const router = useRouter();
   
-  const [habits, setHabits] = useState<Habit[]>(sampleHabits);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [activeChallenge, setActiveChallenge] = useState<HabitParticipation | null>(null);
+  const [challengeTemplate, setChallengeTemplate] = useState<HabitTemplate | null>(null);
+  const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState(getGreeting());
   const [quote, setQuote] = useState(getRandomMotivationalQuote());
   const [streakCount, setStreakCount] = useState(5); // Mock streak count
@@ -31,6 +35,37 @@ export default function HomeScreen() {
     "The best way to predict the future is to invent it.",
   ]
   
+  // Load active challenge data
+  const loadActiveChallenge = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const challenge = await habitService.getUserActiveChallenge(user.uid);
+      setActiveChallenge(challenge);
+      
+      if (challenge) {
+        const template = await habitService.getHabitById(challenge.habitId);
+        setChallengeTemplate(template);
+      }
+    } catch (error) {
+      console.error('Error loading active challenge:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadActiveChallenge();
+  }, [user]);
+
+  // Refresh when screen comes into focus (e.g., after giving up a challenge)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadActiveChallenge();
+    }, [user])
+  );
+
   useEffect(() => {
     const timer = setInterval(() => {
       setGreeting(getGreeting());
@@ -61,13 +96,12 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.header, { backgroundColor: colors.background }]}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
+        <View style={[styles.header, { backgroundColor: colors.background  }]}>
+           <View> <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
             <Text style={[styles.userName, { color: colors.primary }]}>
             {userData?.username || 'User'}
-          </Text>
-          </View>
+          </Text></View>
+
           <View style={styles.headerRight}>
             <StreakCounter 
               count={streakCount}
@@ -75,6 +109,8 @@ export default function HomeScreen() {
               showLabel={true}
             />
           </View>
+
+          
         </View>
         
         <View style={styles.quoteContainer}>
@@ -90,31 +126,31 @@ export default function HomeScreen() {
                 onComplete={() => handleCompleteHabit(habit.id)}
               />
             ))}
-          {/* ) : (
-            <View style={styles.emptyStateContainer}>
-              <FontAwesome name="calendar-plus-o" size={60} color={colors.primary} />
-              <Text style={styles.emptyStateText}>
-                You don't have any active habits
-              </Text>
-              <TouchableOpacity 
-                style={[styles.emptyStateButton, { backgroundColor: colors.primary }]}
-                onPress={() => router.push('/habit/[id]' as any)}
-              >
-                <Text style={styles.emptyStateButtonText}>Create Your First Habit</Text>
-              </TouchableOpacity>
-            </View>
-          )} */}
         </View>
 
-        <View style={styles.challengeButtonContainer}>
-        <TouchableOpacity 
-          style={[styles.challengeButton, { backgroundColor: colors.primary }]}
-          onPress={navigateToNewChallenge}
-        >
-          <FontAwesome name="trophy" size={18} color="white" style={styles.buttonIcon} />
-          <Text style={styles.challengeButtonText}>Join New Challenge</Text>
-        </TouchableOpacity>
-        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.text }]}>Loading...</Text>
+          </View>
+        ) : activeChallenge && challengeTemplate ? (
+          <View style={styles.activeChallengeContainer}>
+            <ChallengeCard
+              challenge={challengeTemplate}
+              onPress={() => router.push(`/habit/${challengeTemplate.id}`)}
+              isJoined={true}
+            />
+          </View>
+        ) : (
+          <View style={styles.challengeButtonContainer}>
+            <TouchableOpacity 
+              style={[styles.challengeButton, { backgroundColor: colors.primary }]}
+              onPress={navigateToNewChallenge}
+            >
+              <FontAwesome name="trophy" size={18} color="white" style={styles.buttonIcon} />
+              <Text style={styles.challengeButtonText}>Join New Challenge</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -135,6 +171,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   greetingContainer: {
     flexDirection: 'row',
@@ -187,7 +226,6 @@ const styles = StyleSheet.create({
   },
   quoteContainer: {
     paddingHorizontal: 20,
-    marginBottom: 16,
   },
   quoteText: {
     fontSize: 16,
@@ -227,5 +265,21 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 18,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+  },
+  activeChallengeContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
   },
 });
