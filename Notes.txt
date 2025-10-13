@@ -1,8 +1,17 @@
 
+
 --------------- Current Todo's -------------------
 
 - Discuss and build with claude on how can i manage the streax count as i might have individual streax for 
-     each challenge and i also wanna keep the user's continious daily login activity streax
+  each challenge and i also wanna keep the user's continious daily login activity streax
+     * I already seem to have a StreaxCounter.tsx, check it out also
+     * Check for any current integrations related to streax both on firebase and on ui.
+     * Try to figure out where the badges fit ? as we have different challenges how do we categorize the wins
+        maybe try to take inspiration from duo lingo.
+
+
+
+----------------=_Next Steps_=--------------------
 
 - We have basic inputs and visual screens for now for some basic challenges and a 
   defined flow, for adding new challenges. 
@@ -21,3 +30,8 @@ WIP:- analyze a flow for all notification related features needed for this app
 
 
 
+
+---------------------=_Final RefineMents_=-----------------------
+- Forgot password
+- Confirm Email 
+-  Sign In with Google/Apple

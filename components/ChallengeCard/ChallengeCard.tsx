@@ -75,7 +75,8 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
     >
       <Card style={[
         styles.container, 
-        featured && styles.featuredContainer
+        featured && styles.featuredContainer,
+        {borderColor: colors.primary, borderWidth: 2,}
       ]}>
         {featured && (
           <View style={styles.featuredBadge}>

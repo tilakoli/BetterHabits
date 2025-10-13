@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   activeChallengeContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 20,
   },
 });
