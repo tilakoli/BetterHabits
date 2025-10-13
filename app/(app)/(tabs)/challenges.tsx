@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, View } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, View, FlatList, RefreshControl } from 'react-native';
 import { Text } from '@/utils/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
@@ -20,6 +20,7 @@ export default function ChallengesScreen() {
   const [habits, setHabits] = useState<HabitTemplate[]>([]);
   const [joinedHabitIds, setJoinedHabitIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [joiningHabit, setJoiningHabit] = useState<string | null>(null);
@@ -49,16 +50,22 @@ export default function ChallengesScreen() {
     }
   }, [user]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   // Refresh when screen comes into focus (e.g., after giving up a challenge)
-  useFocusEffect(
-    React.useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  // useFocusEffect(
+  //   React.useCallback(() => {
+  //     loadData();
+  //   }, [loadData])
+  // );
   
   // Filter habits based on search and category
   const filteredHabits = habits.filter(habit => {
@@ -97,31 +104,9 @@ export default function ChallengesScreen() {
       setJoiningHabit(null);
     }
   };
-  
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-  
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
-        <TouchableOpacity 
-          style={[styles.retryButton, { backgroundColor: colors.primary }]} 
-          onPress={loadData}
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-  
-  return (
-    <View style={styles.container}>
+
+  const renderHeader = () => (
+    <>
       <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
         <FontAwesome name="search" size={16} color={colors.text} style={styles.searchIcon} />
         <TextInput
@@ -166,32 +151,69 @@ export default function ChallengesScreen() {
           ))}
         </ScrollView>
       </View>
-      
-      <ScrollView 
-        style={styles.challengesContainer}
+    </>
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.emptyState}>
+      <FontAwesome name="search" size={48} color={colors.text} style={styles.emptyIcon} />
+      <Text style={[styles.emptyText, { color: colors.text }]}>
+        No challenges found. Try a different search or category.
+      </Text>
+    </View>
+  );
+
+  const renderItem = ({ item }: { item: HabitTemplate }) => (
+    <ChallengeCard
+      challenge={item}
+      onJoin={handleJoinChallenge}
+      isJoining={joiningHabit === item.id}
+      isJoined={joinedHabitIds.has(item.id)}
+      featured={false}
+    />
+  );
+  
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+  
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
+        <TouchableOpacity 
+          style={[styles.retryButton, { backgroundColor: colors.primary }]} 
+          onPress={loadData}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={filteredHabits}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
         contentContainerStyle={styles.challengesContent}
         showsVerticalScrollIndicator={false}
-      >
-        {filteredHabits.length === 0 ? (
-          <View style={styles.emptyState}>
-            <FontAwesome name="search" size={48} color={colors.text} style={styles.emptyIcon} />
-            <Text style={[styles.emptyText, { color: colors.text }]}>
-              No challenges found. Try a different search or category.
-            </Text>
-          </View>
-        ) : (
-          filteredHabits.map(habit => (
-            <ChallengeCard
-              key={habit.id}
-              challenge={habit}
-              onJoin={handleJoinChallenge}
-              isJoining={joiningHabit === habit.id}
-              isJoined={joinedHabitIds.has(habit.id)}
-              featured={false} // Set based on your logic
-            />
-          ))
-        )}
-      </ScrollView>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      />
     </View>
   );
 }
@@ -261,11 +283,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  challengesContainer: {
-    flex: 1,
-  },
   challengesContent: {
     paddingBottom: 24,
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,

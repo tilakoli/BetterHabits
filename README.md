@@ -238,6 +238,36 @@ interface HabitParticipation {
 - Track daily progress
 - View completion statistics
 
+### Checklist for Adding New Challenge
+
+ Add type to ChallengeProgressData in types/index.ts
+ Create [Challenge]Input.tsx component
+ Create [Challenge]Progress.tsx component
+ Export both components in their respective index.ts files
+ Update renderChallengeInput() in challenge detail screen
+ Update renderChallengeProgress() in challenge detail screen
+ Add challenge document to Firebase with correct type field
+ Test: Join challenge, record progress, view visualization
+
+
+### System Architecture 
+User Flow:
+1. Browse challenges → Join challenge
+2. Daily: Input component collects data → Saves to Firebase
+3. View: Progress component visualizes data
+
+Data Flow:
+Challenge Template (Firebase)
+  ↓ (type field)
+HabitParticipation (User's progress)
+  ↓ (habitType field)
+Input Component (type-specific)
+  ↓ (data: ChallengeProgressData)
+Firebase (dailyProgress[date].data)
+  ↓
+Progress Component (type-specific visualization)
+
+
 #### Data Management
 - Real-time Firestore integration
 - Optimistic UI updates

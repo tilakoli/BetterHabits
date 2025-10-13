@@ -1,6 +1,23 @@
 
---------------- Next Steps -------------------
+--------------- Current Todo's -------------------
 
-1. Discuss with claude on how can i manage the streax count as i might have individual streax for 
-     each challenge and i also wanna keep the user's continious daily login activity streax 
-4. Work on the remaining updates needed so that the user can complete a challenge cycle. 
+- Discuss and build with claude on how can i manage the streax count as i might have individual streax for 
+     each challenge and i also wanna keep the user's continious daily login activity streax
+
+- We have basic inputs and visual screens for now for some basic challenges and a 
+  defined flow, for adding new challenges. 
+     * Improve the individual challenges daily progress inputs both ui and tracking data points. 
+     * Maybe I should finalize the first challenges to ship with so i can test out the ui parts properly.
+     * research on how to give the user a ability tp create their own custom habit.
+
+- Then the profile section page will have to be updated, and maybe also add a new page as my 
+  challenge history, and update the profile section allowing users to update profile, update password email 
+     etc. 
+
+
+
+--------------------=_Notifications_=---------------------------
+WIP:- analyze a flow for all notification related features needed for this app
+
+
+

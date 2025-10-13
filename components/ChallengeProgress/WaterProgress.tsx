@@ -6,15 +6,15 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/utils/components/useColorScheme';
 import { HabitParticipation } from '@/types';
 
-interface WalkingProgressProps {
+interface WaterProgressProps {
   participation: HabitParticipation;
 }
 
-export function WalkingProgress({ participation }: WalkingProgressProps) {
+export function WaterProgress({ participation }: WaterProgressProps) {
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
 
-  // Generate array of dates from start to end
+  // Generate date range with water data
   const generateDateRange = () => {
     const dates = [];
     const start = participation.startDate.toDate();
@@ -32,7 +32,8 @@ export function WalkingProgress({ participation }: WalkingProgressProps) {
         dayNumber: dates.length + 1,
         completed: progress?.completed || false,
         hasProgress: !!progress,
-        steps: progress?.data?.steps || 0,
+        glasses: progress?.data?.glasses || 0,
+        ml: progress?.data?.ml || 0,
         isPast,
         isToday
       });
@@ -44,9 +45,10 @@ export function WalkingProgress({ participation }: WalkingProgressProps) {
   };
 
   const dateRange = generateDateRange();
-  const totalSteps = dateRange.reduce((sum, day) => sum + day.steps, 0);
-  const avgSteps = dateRange.filter(d => d.hasProgress).length > 0
-    ? Math.round(totalSteps / dateRange.filter(d => d.hasProgress).length)
+  const totalGlasses = dateRange.reduce((sum, day) => sum + day.glasses, 0);
+  const totalLiters = Math.round((dateRange.reduce((sum, day) => sum + day.ml, 0) / 1000) * 10) / 10;
+  const avgGlasses = dateRange.filter(d => d.hasProgress).length > 0
+    ? Math.round(totalGlasses / dateRange.filter(d => d.hasProgress).length)
     : 0;
 
   return (
@@ -54,21 +56,21 @@ export function WalkingProgress({ participation }: WalkingProgressProps) {
       {/* Summary Stats */}
       <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
         <View style={styles.statItem}>
-          <FontAwesome name="y-combinator-square" size={20} color={colors.primary} />
+          <FontAwesome name="tint" size={20} color={colors.primary} />
           <Text style={[styles.statValue, { color: colors.text }]}>
-            {totalSteps.toLocaleString()}
+            {totalLiters}L
           </Text>
-          <Text style={styles.statLabel}>Total Steps</Text>
+          <Text style={styles.statLabel}>Total Water</Text>
         </View>
         
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-        
+      
         <View style={styles.statItem}>
           <FontAwesome name="line-chart" size={20} color={colors.accent} />
           <Text style={[styles.statValue, { color: colors.text }]}>
-            {avgSteps.toLocaleString()}
+            {avgGlasses}
           </Text>
-          <Text style={styles.statLabel}>Avg/Day</Text>
+          <Text style={styles.statLabel}>Avg Glasses</Text>
         </View>
       </View>
 
@@ -81,7 +83,7 @@ export function WalkingProgress({ participation }: WalkingProgressProps) {
                 styles.dayCircle,
                 {
                   backgroundColor: day.hasProgress 
-                    ? (day.completed ? '#27AE60' : '#E74C3C')
+                    ? (day.completed ? '#3498db' : '#E74C3C')
                     : day.isPast 
                       ? '#BDC3C7' 
                       : colors.border,
@@ -89,18 +91,16 @@ export function WalkingProgress({ participation }: WalkingProgressProps) {
                   borderWidth: day.isToday ? 2 : 0
                 }
               ]}>
-                {day.hasProgress && (
-                  <FontAwesome 
-                    name={day.completed ? "check" : "times"} 
-                    size={12} 
-                    color="white" 
-                  />
-                )}
+                <FontAwesome 
+                  name="tint" 
+                  size={14} 
+                  color="white" 
+                />
               </View>
               
-              {day.steps > 0 && (
-                <Text style={[styles.stepsText, { color: colors.primary }]}>
-                  {day.steps.toLocaleString()}
+              {day.glasses > 0 && (
+                <Text style={[styles.glassesText, { color: colors.text }]}>
+                  {day.glasses} 💧
                 </Text>
               )}
               
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  stepsText: {
+  glassesText: {
     fontSize: 11,
     fontWeight: '600',
     marginBottom: 2,

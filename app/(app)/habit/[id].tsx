@@ -16,16 +16,8 @@ import { HabitTemplate, HabitParticipation } from "@/types";
 import { habitService } from "@/services/habitService";
 import { useAuth } from "@/providers/AuthProvider/useAuth";
 
-import {
-  WalkingProgress,
-  ReadingProgress,
-  GenericProgress,
-} from "@/components/ChallengeProgress";
-import {
-  WalkingInput,
-  ReadingInput,
-  GenericInput,
-} from "@/components/ChallengeInputs";
+import { WalkingInput, ReadingInput, MeditationInput, WaterInput, GenericInput } from '@/components/ChallengeInputs';
+import { WalkingProgress, ReadingProgress, MeditationProgress, WaterProgress, GenericProgress } from '@/components/ChallengeProgress';
 
 export default function ChallengeDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -166,59 +158,76 @@ export default function ChallengeDetailScreen() {
     }
   };
 
-  const renderChallengeInput = () => {
-    const challengeType = userParticipation?.habitType || "generic";
+ const renderChallengeInput = () => {
+  const challengeType = userParticipation?.habitType || 'generic';
 
-    switch (challengeType) {
-      case "walking":
-        return (
-          <WalkingInput
-            onSubmit={(data) => handleRecordProgress(true, data)}
-            isLoading={isRecordingProgress}
-          />
-        );
+  switch (challengeType) {
+    case 'walking':
+      return (
+        <WalkingInput
+          onSubmit={(data) => handleRecordProgress(true, data)}
+          isLoading={isRecordingProgress}
+        />
+      );
+    
+    case 'reading':
+      return (
+        <ReadingInput
+          onSubmit={(data) => handleRecordProgress(true, data)}
+          isLoading={isRecordingProgress}
+        />
+      );
+    
+    case 'meditation':
+      return (
+        <MeditationInput
+          onSubmit={(data) => handleRecordProgress(true, data)}
+          isLoading={isRecordingProgress}
+        />
+      );
+    
+    case 'water':
+      return (
+        <WaterInput
+          onSubmit={(data) => handleRecordProgress(true, data)}
+          isLoading={isRecordingProgress}
+        />
+      );
+    
+    case 'generic':
+    default:
+      return (
+        <GenericInput
+          onSubmit={(completed) => handleRecordProgress(completed, completed ? { type: 'generic' } : undefined)}
+          isLoading={isRecordingProgress}
+        />
+      );
+  }
+};
 
-      case "reading":
-        return (
-          <ReadingInput
-            onSubmit={(data) => handleRecordProgress(true, data)}
-            isLoading={isRecordingProgress}
-          />
-        );
+ const renderChallengeProgress = () => {
+  if (!userParticipation) return null;
 
-      case "generic":
-      default:
-        return (
-          <GenericInput
-            onSubmit={(completed) =>
-              handleRecordProgress(
-                completed,
-                completed ? { type: "generic" } : undefined
-              )
-            }
-            isLoading={isRecordingProgress}
-          />
-        );
-    }
-  };
+  const challengeType = userParticipation.habitType;
 
-  const renderChallengeProgress = () => {
-    if (!userParticipation) return null;
-
-    const challengeType = userParticipation.habitType;
-
-    switch (challengeType) {
-      case "walking":
-        return <WalkingProgress participation={userParticipation} />;
-
-      case "reading":
-        return <ReadingProgress participation={userParticipation} />;
-
-      case "generic":
-      default:
-        return <GenericProgress participation={userParticipation} />;
-    }
-  };
+  switch (challengeType) {
+    case 'walking':
+      return <WalkingProgress participation={userParticipation} />;
+    
+    case 'reading':
+      return <ReadingProgress participation={userParticipation} />;
+    
+    case 'meditation':
+      return <MeditationProgress participation={userParticipation} />;
+    
+    case 'water':
+      return <WaterProgress participation={userParticipation} />;
+    
+    case 'generic':
+    default:
+      return <GenericProgress participation={userParticipation} />;
+  }
+};
 
   const calculateProgress = () => {
     if (!userParticipation) return 0;
@@ -478,7 +487,7 @@ export default function ChallengeDetailScreen() {
                     Today's Progress
                   </Text>
 
-                  {todayProgress.hasProgress ? (
+                  {todayProgress.completed ? (
                     <View style={styles.completedSection}>
                       <FontAwesome
                         name={
@@ -563,7 +572,7 @@ export default function ChallengeDetailScreen() {
             {renderChallengeProgress()}
           </View>
         )}
-        Í{/* Challenge Details */}
+        {/* Challenge Details */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Challenge Details

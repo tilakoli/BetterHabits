@@ -7,3 +7,5 @@ export { default as HabitCard } from './HabitCard/HabitCard';
 export { default as ProgressCircle } from './ProgressCircle/ProgressCircle';
 export { default as StepCounter } from './StepCounter/StepCounter';
 export { default as StreakCounter } from './StreakCounter/StreakCounter'; 
+export {default as DailyQuote} from './DailyQuote/DailyQuote'
+export {default as MotivationalGreeting} from './Greeting/MotivationalGreeting'

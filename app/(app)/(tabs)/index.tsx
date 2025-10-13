@@ -1,157 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, View } from '@/utils/components/Themed';
-import { useRouter } from 'expo-router';
-import { FontAwesome } from '@expo/vector-icons';
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/utils/components/useColorScheme';
-import { HabitCard, StreakCounter, ChallengeCard } from '@/components';
-import { getGreeting } from '@/utils/dateUtils';
-import { getRandomMotivationalQuote } from '@/utils/habitUtils';
-import { completeHabitForToday } from '@/utils/habitUtils';
-import { Habit, HabitTemplate, HabitParticipation } from '@/types';
-import { useAuth } from '@/providers/AuthProvider/useAuth';
-import { habitService } from '@/services/habitService';
+import React, { useState, useEffect } from "react";
+import { StyleSheet, TouchableOpacity, FlatList, RefreshControl } from "react-native";
+import { Text, View } from "@/utils/components/Themed";
+import { useRouter } from "expo-router";
+import { FontAwesome } from "@expo/vector-icons";
+import Colors from "@/constants/Colors";
+import { useColorScheme } from "@/utils/components/useColorScheme";
+import { HabitCard, StreakCounter, ChallengeCard, DailyQuote, MotivationalGreeting } from "@/components";
+import { completeHabitForToday } from "@/utils/habitUtils";
+import { Challenge, HabitTemplate, HabitParticipation } from "@/types";
+import { useAuth } from "@/providers/AuthProvider/useAuth";
+import { habitService } from "@/services/habitService";
 
 export default function HomeScreen() {
   const { user, userData } = useAuth();
-  const colorScheme = useColorScheme() || 'light';
+  const colorScheme = useColorScheme() || "light";
   const colors = Colors[colorScheme];
   const router = useRouter();
-  
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [activeChallenge, setActiveChallenge] = useState<HabitParticipation | null>(null);
-  const [challengeTemplate, setChallengeTemplate] = useState<HabitTemplate | null>(null);
+
+  const [habits, setHabits] = useState<Challenge[]>([]);
+  const [activeChallenge, setActiveChallenge] =
+    useState<HabitParticipation | null>(null);
+  const [challengeTemplate, setChallengeTemplate] =
+    useState<HabitTemplate | null>(null);
   const [loading, setLoading] = useState(true);
-  const [greeting, setGreeting] = useState(getGreeting());
-  const [quote, setQuote] = useState(getRandomMotivationalQuote());
-  const [streakCount, setStreakCount] = useState(5); // Mock streak count
-  const Quotations = [
-    "The only way to do great work is to love what you do.",
-    "Believe you can and you're halfway there.",
-    "Success is not the key to happiness. Happiness is the key to success. If you love what you are doing, you will be successful.",
-    "The only limit to our realization of tomorrow will be our doubts of today.",
-    "The best way to predict the future is to invent it.",
-  ]
-  
+  const [refreshing, setRefreshing] = useState(false);
+  const [streakCount, setStreakCount] = useState(5);
+
   // Load active challenge data
   const loadActiveChallenge = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       const challenge = await habitService.getUserActiveChallenge(user.uid);
       setActiveChallenge(challenge);
-      
+
       if (challenge) {
         const template = await habitService.getHabitById(challenge.habitId);
         setChallengeTemplate(template);
       }
     } catch (error) {
-      console.error('Error loading active challenge:', error);
+      console.error("Error loading active challenge:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadActiveChallenge();
+    setRefreshing(false);
   };
 
   useEffect(() => {
     loadActiveChallenge();
   }, [user]);
 
-  // Refresh when screen comes into focus (e.g., after giving up a challenge)
-  useFocusEffect(
-    React.useCallback(() => {
-      loadActiveChallenge();
-    }, [user])
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setGreeting(getGreeting());
-       for (let i = 0;  i < Quotations.length; i ++) {
-        setQuote(Quotations[i]);
-       }
-    }, 4000); 
-    
-    return () => clearInterval(timer);
-  }, []);
-  
   const handleCompleteHabit = (habitId: string) => {
-    setHabits(prevHabits => 
-      prevHabits.map(habit => 
+    setHabits((prevHabits) =>
+      prevHabits.map((habit) =>
         habit.id === habitId ? completeHabitForToday(habit) : habit
       )
     );
   };
-  
+
   const navigateToNewChallenge = () => {
-    router.push('/(app)/(tabs)/challenges');
+    router.push("/(app)/(tabs)/challenges");
   };
-  
+
+  const renderHeader = () => (
+    <>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        
+        <MotivationalGreeting username={userData.username} />
+
+        <View style={[styles.streakBadge, { backgroundColor: `${colors.primary}15` }]}>
+          <FontAwesome name="fire" size={16} color={colors.primary} />
+          <Text style={[styles.streakText, { color: colors.primary }]}>
+            {streakCount}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.divider, { backgroundColor: colors.border || '#E5E5E5' }]} />
+
+      <View style={[{backgroundColor: colors.background}]}>
+        <DailyQuote />
+      </View>
+    </>
+  );
+
+  const renderFooter = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading...
+          </Text>
+        </View>
+      );
+    }
+
+    if (activeChallenge && challengeTemplate) {
+      return (
+        <View style={styles.activeChallengeContainer}>
+          <ChallengeCard
+            challenge={challengeTemplate}
+            onPress={() => router.push(`/habit/${challengeTemplate.id}`)}
+            isJoined={true}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.challengeButtonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.challengeButton,
+            { 
+              backgroundColor: colors.primary,
+              shadowColor: colors.primary,
+            },
+          ]}
+          onPress={navigateToNewChallenge}
+          activeOpacity={0.8}
+        >
+          <View style={styles.buttonIconWrapper}>
+            <FontAwesome
+              name="trophy"
+              size={20}
+              color="white"
+            />
+          </View>
+          <Text style={styles.challengeButtonText}>Start Your First Challenge</Text>
+          <FontAwesome name="arrow-right" size={16} color="white" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderHabitItem = ({ item }: { item: Challenge }) => (
+    <HabitCard
+      habit={item}
+      onComplete={() => handleCompleteHabit(item.id)}
+    />
+  );
+
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
+    <View style={[styles.container, {backgroundColor: colors.background}]}>
+      <FlatList
+        data={habits}
+        renderItem={renderHabitItem}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.header, { backgroundColor: colors.background  }]}>
-           <View> <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
-            <Text style={[styles.userName, { color: colors.primary }]}>
-            {userData?.username || 'User'}
-          </Text></View>
-
-          <View style={styles.headerRight}>
-            <StreakCounter 
-              count={streakCount}
-              size="small"
-              showLabel={true}
-            />
-          </View>
-
-          
-        </View>
-        
-        <View style={styles.quoteContainer}>
-          <Text style={styles.quoteText}>"{quote}"</Text>
-        </View>
-        
-        <View style={styles.habitsList}>
-          {habits.length > 0 && 
-            habits.map(habit => (
-              <HabitCard 
-                key={habit.id}
-                habit={habit}
-                onComplete={() => handleCompleteHabit(habit.id)}
-              />
-            ))}
-        </View>
-
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={[styles.loadingText, { color: colors.text }]}>Loading...</Text>
-          </View>
-        ) : activeChallenge && challengeTemplate ? (
-          <View style={styles.activeChallengeContainer}>
-            <ChallengeCard
-              challenge={challengeTemplate}
-              onPress={() => router.push(`/habit/${challengeTemplate.id}`)}
-              isJoined={true}
-            />
-          </View>
-        ) : (
-          <View style={styles.challengeButtonContainer}>
-            <TouchableOpacity 
-              style={[styles.challengeButton, { backgroundColor: colors.primary }]}
-              onPress={navigateToNewChallenge}
-            >
-              <FontAwesome name="trophy" size={18} color="white" style={styles.buttonIcon} />
-              <Text style={styles.challengeButtonText}>Join New Challenge</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      />
     </View>
   );
 }
@@ -160,126 +174,88 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     paddingBottom: 30,
-    flex: 1
+    flexGrow: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  greetingContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  habitsList: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  emptyStateContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    borderRadius: 12,
-  },
-  emptyStateText: {
+  streakText: {
     fontSize: 16,
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 20,
+    fontWeight: "700",
   },
-  emptyStateButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 30,
+  divider: {
+    height: 1,
+    marginHorizontal: 16,
+    opacity: 0.3,
   },
-  emptyStateButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  quoteContainer: {
-    paddingHorizontal: 20,
-  },
-  quoteText: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    textAlign: 'left',
-    color: '#666',
-    lineHeight: 24,
-  },
+
   challengeButtonContainer: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    // backgroundColor: 'red',
+    paddingHorizontal: 24,
+    paddingTop: 20,
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
+    minHeight: 200,
   },
   challengeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    paddingVertical: 16,
-    borderRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  buttonIcon: {
-    marginRight: 10,
+  buttonIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   challengeButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  userName: {
-    fontSize: 18,
+    color: "white",
+    fontWeight: "700",
+    fontSize: 17,
+    flex: 1,
+    letterSpacing: 0.2,
   },
   loadingContainer: {
-    alignItems: 'center',
-    padding: 20,
+    alignItems: "center",
+    padding: 40,
+    flex: 1,
+    justifyContent: "center",
   },
   loadingText: {
     fontSize: 16,
+    opacity: 0.6,
   },
   activeChallengeContainer: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
 });

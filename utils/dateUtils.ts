@@ -6,21 +6,6 @@ export function formatDate(date: Date): string {
 }
 
 /**
- * Get greeting based on time of day
- */
-export function getGreeting(): string {
-  const hour = new Date().getHours();
-  
-  if (hour < 12) {
-    return 'Good morning';
-  } else if (hour < 18) {
-    return 'Good afternoon';
-  } else {
-    return 'Good evening';
-  }
-}
-
-/**
  * Format a date as a readable string
  */
 export function formatReadableDate(date: Date): string {
