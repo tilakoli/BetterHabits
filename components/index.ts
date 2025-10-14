@@ -9,3 +9,5 @@ export { default as StepCounter } from './StepCounter/StepCounter';
 export { default as StreakCounter } from './StreakCounter/StreakCounter'; 
 export {default as DailyQuote} from './DailyQuote/DailyQuote'
 export {default as MotivationalGreeting} from './Greeting/MotivationalGreeting'
+export { default as StreakCelebration } from './StreakCelebration/StreakCelebration';
+export {default as HistoryCard } from './HistoryCard/HistoryCard'

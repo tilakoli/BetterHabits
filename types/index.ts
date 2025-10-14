@@ -92,10 +92,9 @@ export interface HabitParticipation {
   lastUpdated: any;
   completedDate?: any; // When the challenge was completed
   dailyProgress: Record<string, DailyProgress>; // Date string (YYYY-MM-DD) as key
-  
+  currentStreak: number; // Consecutive days in this challenge
+  longestStreak: number; // Best streak in this challenge
   // Removed for now (can be added back later):
-  // currentStreak: number;
-  // longestStreak: number;
   // completedAt?: any;
 }
 
@@ -107,14 +106,15 @@ export interface UserProfile {
   displayName: string;
   profilePicture?: string;
   createdAt: any;
-  stats: {
-    totalHabitsCompleted: number;
-    totalHabitsStarted: number;
-    currentActiveHabits: number; // Should be 0 or 1 with new system
-    totalDaysTracked: number;
-    // Removed for now (can be added back later):
-    // longestStreak: number;
-  };
+ stats: {
+  totalHabitsCompleted: number;
+  totalHabitsStarted: number;
+  currentActiveHabits: number;
+  totalDaysTracked: number;
+  currentStreak: number; // Global streak across all challenges
+  longestStreak: number; // Best global streak ever
+  lastActiveDate?: string; // YYYY-MM-DD - for grace period tracking
+};
   habits: Record<string, HabitParticipation>; // participationId as key
   settings: {
     notifications: {

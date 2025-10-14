@@ -11,13 +11,25 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/utils/components/useColorScheme";
-import { ProgressCircle, CalendarView } from "@/components";
+import { ProgressCircle, CalendarView, StreakCelebration } from "@/components";
 import { HabitTemplate, HabitParticipation } from "@/types";
 import { habitService } from "@/services/habitService";
 import { useAuth } from "@/providers/AuthProvider/useAuth";
 
-import { WalkingInput, ReadingInput, MeditationInput, WaterInput, GenericInput } from '@/components/ChallengeInputs';
-import { WalkingProgress, ReadingProgress, MeditationProgress, WaterProgress, GenericProgress } from '@/components/ChallengeProgress';
+import {
+  WalkingInput,
+  ReadingInput,
+  MeditationInput,
+  WaterInput,
+  GenericInput,
+} from "@/components/ChallengeInputs";
+import {
+  WalkingProgress,
+  ReadingProgress,
+  MeditationProgress,
+  WaterProgress,
+  GenericProgress,
+} from "@/components/ChallengeProgress";
 
 export default function ChallengeDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -38,6 +50,8 @@ export default function ChallengeDetailScreen() {
     hasProgress: boolean;
     completed?: boolean;
   }>({ hasProgress: false });
+
+  const [showCelebration, setShowCelebration] = useState<number | null>(null);
 
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
@@ -128,10 +142,15 @@ export default function ChallengeDetailScreen() {
         userParticipation.id!,
         today,
         completed,
-        additionalData // Pass the challenge-specific data
+        additionalData
       );
 
       if (result.success) {
+        // Show celebration if milestone reached
+        if (result.streakMilestone) {
+          setShowCelebration(result.streakMilestone);
+        }
+
         if (result.challengeCompleted) {
           Alert.alert(
             "Challenge Completed! 🎉",
@@ -158,76 +177,81 @@ export default function ChallengeDetailScreen() {
     }
   };
 
- const renderChallengeInput = () => {
-  const challengeType = userParticipation?.habitType || 'generic';
+  const renderChallengeInput = () => {
+    const challengeType = userParticipation?.habitType || "generic";
 
-  switch (challengeType) {
-    case 'walking':
-      return (
-        <WalkingInput
-          onSubmit={(data) => handleRecordProgress(true, data)}
-          isLoading={isRecordingProgress}
-        />
-      );
-    
-    case 'reading':
-      return (
-        <ReadingInput
-          onSubmit={(data) => handleRecordProgress(true, data)}
-          isLoading={isRecordingProgress}
-        />
-      );
-    
-    case 'meditation':
-      return (
-        <MeditationInput
-          onSubmit={(data) => handleRecordProgress(true, data)}
-          isLoading={isRecordingProgress}
-        />
-      );
-    
-    case 'water':
-      return (
-        <WaterInput
-          onSubmit={(data) => handleRecordProgress(true, data)}
-          isLoading={isRecordingProgress}
-        />
-      );
-    
-    case 'generic':
-    default:
-      return (
-        <GenericInput
-          onSubmit={(completed) => handleRecordProgress(completed, completed ? { type: 'generic' } : undefined)}
-          isLoading={isRecordingProgress}
-        />
-      );
-  }
-};
+    switch (challengeType) {
+      case "walking":
+        return (
+          <WalkingInput
+            onSubmit={(data) => handleRecordProgress(true, data)}
+            isLoading={isRecordingProgress}
+          />
+        );
 
- const renderChallengeProgress = () => {
-  if (!userParticipation) return null;
+      case "reading":
+        return (
+          <ReadingInput
+            onSubmit={(data) => handleRecordProgress(true, data)}
+            isLoading={isRecordingProgress}
+          />
+        );
 
-  const challengeType = userParticipation.habitType;
+      case "meditation":
+        return (
+          <MeditationInput
+            onSubmit={(data) => handleRecordProgress(true, data)}
+            isLoading={isRecordingProgress}
+          />
+        );
 
-  switch (challengeType) {
-    case 'walking':
-      return <WalkingProgress participation={userParticipation} />;
-    
-    case 'reading':
-      return <ReadingProgress participation={userParticipation} />;
-    
-    case 'meditation':
-      return <MeditationProgress participation={userParticipation} />;
-    
-    case 'water':
-      return <WaterProgress participation={userParticipation} />;
-    
-    case 'generic':
-    default:
-      return <GenericProgress participation={userParticipation} />;
-  }
-};
+      case "water":
+        return (
+          <WaterInput
+            onSubmit={(data) => handleRecordProgress(true, data)}
+            isLoading={isRecordingProgress}
+          />
+        );
+
+      case "generic":
+      default:
+        return (
+          <GenericInput
+            onSubmit={(completed) =>
+              handleRecordProgress(
+                completed,
+                completed ? { type: "generic" } : undefined
+              )
+            }
+            isLoading={isRecordingProgress}
+          />
+        );
+    }
+  };
+
+  const renderChallengeProgress = () => {
+    if (!userParticipation) return null;
+
+    const challengeType = userParticipation.habitType;
+
+    switch (challengeType) {
+      case "walking":
+        return <WalkingProgress participation={userParticipation} />;
+
+      case "reading":
+        return <ReadingProgress participation={userParticipation} />;
+
+      case "meditation":
+        return <MeditationProgress participation={userParticipation} />;
+
+      case "water":
+        return <WaterProgress participation={userParticipation} />;
+
+      case "generic":
+      default:
+        return <GenericProgress participation={userParticipation} />;
+    }
+  };
 
   const calculateProgress = () => {
     if (!userParticipation) return 0;
@@ -327,6 +351,12 @@ export default function ChallengeDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {showCelebration && (
+        <StreakCelebration
+          milestone={showCelebration}
+          onDismiss={() => setShowCelebration(null)}
+        />
+      )}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -394,6 +424,21 @@ export default function ChallengeDetailScreen() {
                     {userParticipation!.totalCompletedDays}
                   </Text>
                   <Text style={styles.statLabel}>Days Complete</Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.statDivider,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+
+                <View style={styles.statItem}>
+                  <FontAwesome name="fire" size={20} color="#e74c3c" />
+                  <Text style={[styles.statValue, { color: colors.accent }]}>
+                    {userParticipation!.currentStreak}
+                  </Text>
+                  <Text style={styles.statLabel}>Day Streak</Text>
                 </View>
 
                 <View

@@ -1,153 +1,396 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, View } from '@/utils/components/Themed';
-import { FontAwesome } from '@expo/vector-icons';
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/utils/components/useColorScheme';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/providers/AuthProvider/useAuth';
-import InputField from '@/components/InputField/InputField';
-import { getAuth, updateProfile } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
-import { DB, usersRef } from '@/firebaseConfig';
-import { showAlert } from '@/components';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { Text, View } from "@/utils/components/Themed";
+import { FontAwesome } from "@expo/vector-icons";
+import Colors from "@/constants/Colors";
+import { useColorScheme } from "@/utils/components/useColorScheme";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/providers/AuthProvider/useAuth";
+import InputField from "@/components/InputField/InputField";
+import {
+  getAuth,
+  updateProfile,
+  updateEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
+import { DB, usersRef } from "@/firebaseConfig";
+import { showAlert } from "@/components";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import EditFieldBottomSheet from "@/components/BottomSheetModals/EditFieldBottomSheet";
+import PasswordChangeBottomSheet from "@/components/BottomSheetModals/PasswordChangeBottomSheet";
 
 export default function PersonalInfoScreen() {
-  const colorScheme = useColorScheme() || 'light';
+  const colorScheme = useColorScheme() || "light";
   const colors = Colors[colorScheme];
   const router = useRouter();
   const { userData, user: authUser, fetchUserData } = useAuth();
 
-  const [isEditingUsername, setIsEditingUsername] = useState(false);
-  const [newUsername, setNewUsername] = useState(userData?.username || 'User');
+  // Bottom sheet refs
+  const fullNameSheetRef = useRef<any>(null);
+  const emailSheetRef = useRef<any>(null);
+  const passwordSheetRef = useRef<any>(null);
 
-  // Sync newUsername with userData.username if it changes externally
-  useEffect(() => {
-    if (userData?.username && newUsername !== userData.username) {
-      setNewUsername(userData.username);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSaveFullName = async (newFullName: string) => {
+    if (!authUser) throw new Error("User not authenticated");
+
+    const auth = getAuth();
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, {
+        displayName: newFullName,
+      });
+
+      const userDocRef = doc(usersRef, auth.currentUser.uid);
+      await updateDoc(userDocRef, {
+        displayName: newFullName,
+      });
+
+      await fetchUserData();
+      showAlert({
+        title: "Success",
+        message: "Full name updated successfully!",
+        type: "success",
+      });
     }
-  }, [userData?.username]);
-
-  const user = {
-    name: userData?.username || 'User',
-    email: userData?.email || 'No email available',
-    joinDate: userData?.createdAt || 'Unknown',
-    streakCount: 5,
-    totalPoints: 876,
   };
 
-  const renderInfoItem = (icon: string, title: string, value: string, onEditPress?: () => void) => (
-    <View style={styles.infoItem}>
-      <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-        <FontAwesome name={icon as any} size={20} color={colors.primary} />
-      </View>
-      <View style={styles.infoContent}>
-        <Text style={styles.infoTitle}>{title}</Text>
-        <Text style={[styles.infoValue, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>
-          {value}
-        </Text>
-      </View>
-      {onEditPress && (
-        <TouchableOpacity onPress={onEditPress} style={styles.editIconBtn}>
-          <FontAwesome name="pencil" size={16} color={colors.text} />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const handleSaveEmail = async (newEmail: string) => {
+    if (!authUser) throw new Error("User not authenticated");
 
-  const handleSaveUsername = async () => {
-    if (!authUser || newUsername.trim() === '' || newUsername === userData?.username) {
-      setIsEditingUsername(false);
+    // Require password for email change
+    return new Promise<void>((resolve, reject) => {
+      Alert.prompt(
+        "Confirm Password",
+        "Enter your current password to change your email",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => reject(new Error("Cancelled")),
+          },
+          {
+            text: "Confirm",
+            onPress: async (password) => {
+              try {
+                const auth = getAuth();
+                const user = auth.currentUser;
+
+                if (!user || !user.email || !password) {
+                  throw new Error("Invalid credentials");
+                }
+
+                // Reauthenticate
+                const credential = EmailAuthProvider.credential(
+                  user.email,
+                  password
+                );
+                await reauthenticateWithCredential(user, credential);
+
+                // Update email
+                await updateEmail(user, newEmail);
+
+                // Update in Firestore
+                const userDocRef = doc(usersRef, user.uid);
+                await updateDoc(userDocRef, {
+                  email: newEmail,
+                });
+
+                await fetchUserData();
+                showAlert({
+                  title: "Success",
+                  message: "Email updated successfully!",
+                  type: "success",
+                });
+                resolve();
+              } catch (error: any) {
+                let errorMessage = "Failed to update email";
+                if (error.code === "auth/wrong-password") {
+                  errorMessage = "Incorrect password";
+                } else if (error.code === "auth/email-already-in-use") {
+                  errorMessage = "Email already in use";
+                }
+                reject(new Error(errorMessage));
+              }
+            },
+          },
+        ],
+        "secure-text"
+      );
+    });
+  };
+
+  const validateFullName = (value: string): string | null => {
+    if (value.trim().length === 0) {
+      return "Full name cannot be empty";
+    }
+    if (value.trim().length < 2) {
+      return "Full name must be at least 2 characters";
+    }
+    return null;
+  };
+
+  const validateEmail = (value: string): string | null => {
+    if (value.trim().length === 0) {
+      return "Email cannot be empty";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      return "Please enter a valid email address";
+    }
+    return null;
+  };
+
+  const handleChangePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all password fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "New passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert("Error", "New password must be at least 6 characters");
       return;
     }
 
     try {
+      setIsLoading(true);
       const auth = getAuth();
-      if (auth.currentUser) {
-        // Update display name in Firebase Auth
-        await updateProfile(auth.currentUser, {
-          displayName: newUsername.trim(),
-        });
+      const user = auth.currentUser;
 
-        // Update username in Firestore
-        const userDocRef = doc(usersRef, auth.currentUser.uid);
-        await updateDoc(userDocRef, {
-          username: newUsername.trim(),
-        });
-
-        // Refresh user data in context
-        await fetchUserData();
-
-        showAlert({
-          title: 'Success',
-          message: 'Username updated successfully!',
-          type: 'success',
-        });
+      if (!user || !user.email) {
+        Alert.alert("Error", "User not found");
+        return;
       }
-    } catch (error) {
-      console.error('Error updating username:', error);
-      showAlert({
-        title: 'Error',
-        message: 'Failed to update username. Please try again.',
-        type: 'error',
-      });
+
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      );
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
+
+      Alert.alert("Success", "Password updated successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            setIsChangingPassword(false);
+            setPasswordData({
+              currentPassword: "",
+              newPassword: "",
+              confirmPassword: "",
+            });
+          },
+        },
+      ]);
+    } catch (error: any) {
+      let errorMessage = "Failed to change password";
+      if (error.code === "auth/wrong-password") {
+        errorMessage = "Current password is incorrect";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "New password is too weak";
+      }
+      Alert.alert("Error", errorMessage);
     } finally {
-      setIsEditingUsername(false);
+      setIsLoading(false);
     }
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+  const renderInfoItem = (
+    icon: string,
+    title: string,
+    value: string,
+    onEditPress?: () => void
+  ) => (
+    <TouchableOpacity
+      style={styles.infoItem}
+      onPress={onEditPress}
+      disabled={!onEditPress}
+      activeOpacity={onEditPress ? 0.6 : 1}
+    >
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: `${colors.primary}15` },
+        ]}
       >
-        <View style={styles.profileSection}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>
-              {user.name.charAt(0).toUpperCase()}
+        <FontAwesome name={icon as any} size={20} color={colors.primary} />
+      </View>
+      <View style={styles.infoContent}>
+        <Text style={styles.infoTitle}>{title}</Text>
+        <Text
+          style={[
+            styles.infoValue,
+            { color: colorScheme === "dark" ? "#A0A0A0" : "#666" },
+          ]}
+        >
+          {value}
+        </Text>
+      </View>
+      {onEditPress && (
+        <FontAwesome
+          name="chevron-right"
+          size={16}
+          color={colors.text}
+          style={{ opacity: 0.3 }}
+        />
+      )}
+    </TouchableOpacity>
+  );
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "Unknown";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Profile Section */}
+          <View style={styles.profileSection}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarText}>
+                {(userData?.displayName || userData?.username || "User")
+                  .charAt(0)
+                  .toUpperCase()}
+              </Text>
+            </View>
+
+            <Text style={[styles.userName, { color: colors.text }]}>
+              @{userData?.username || "user"}
             </Text>
-            <TouchableOpacity onPress={() => console.log('Edit profile image')} style={styles.editAvatarIcon}>
-              <FontAwesome name="pencil" size={16} color="white" />
+          </View>
+
+          {/* Account Info Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Account Information
+            </Text>
+            {renderInfoItem(
+              "user",
+              "Full Name",
+              userData?.username || "Not set",
+              () => fullNameSheetRef.current?.expand()
+            )}
+            {renderInfoItem(
+              "envelope",
+              "Email Address",
+              userData?.email || "No email",
+              () => emailSheetRef.current?.expand()
+            )}
+            {renderInfoItem(
+              "calendar",
+              "Member Since",
+              formatDate(userData?.createdAt)
+            )}
+          </View>
+
+          {/* Stats Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Your Stats
+            </Text>
+            {renderInfoItem(
+              "fire",
+              "Current Streak",
+              `${userData?.stats?.currentStreak || 0} days`
+            )}
+            {renderInfoItem(
+              "trophy",
+              "Longest Streak",
+              `${userData?.stats?.longestStreak || 0} days`
+            )}
+            {renderInfoItem(
+              "check-circle",
+              "Challenges Completed",
+              `${userData?.stats?.totalHabitsCompleted || 0}`
+            )}
+            {renderInfoItem(
+              "clock-o",
+              "Total Days Tracked",
+              `${userData?.stats?.totalDaysTracked || 0}`
+            )}
+          </View>
+
+          {/* Change Password Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Security
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.changePasswordButton,
+                { backgroundColor: colors.card },
+              ]}
+              onPress={() => passwordSheetRef.current?.expand()}
+            >
+              <FontAwesome name="lock" size={18} color={colors.primary} />
+              <Text style={[styles.changePasswordText, { color: colors.text }]}>
+                Change Password
+              </Text>
+              <FontAwesome name="chevron-right" size={16} color={colors.text} />
             </TouchableOpacity>
           </View>
-          {isEditingUsername ? (
-            <View style={styles.usernameEditContainer}>
-              <InputField
-                value={newUsername}
-                onChangeText={setNewUsername}
-                onBlur={handleSaveUsername}
-                autoFocus
-                placeholder="Enter new username"
-                inputStyle={styles.usernameInput}
-                containerStyle={{ flex: 1 }}
-              />
-              <TouchableOpacity onPress={handleSaveUsername} style={styles.saveButton}>
-                <FontAwesome name="check" size={20} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.usernameDisplayContainer}>
-              <Text style={[styles.userName, { color: colors.text }]}>{user.name}</Text>
-              <TouchableOpacity onPress={() => {
-                setIsEditingUsername(true);
-                setNewUsername(userData?.username || 'User'); // Ensure current username is set when editing starts
-              }} style={styles.editUsernameIcon}>
-                <FontAwesome name="pencil" size={16} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        </ScrollView>
 
-        <View style={styles.infoSection}>
-          {renderInfoItem('envelope', 'Email Address', user.email, () => console.log('Edit email'))}
-          {renderInfoItem('calendar', 'Join Date', new Date(user.joinDate).toLocaleDateString())}
-          {renderInfoItem('trophy', 'Total Points', user.totalPoints.toString())}
-          {renderInfoItem('fire', 'Current Streak', `${user.streakCount} days`)}
-        </View>
+        {/* Bottom Sheets */}
+        <EditFieldBottomSheet
+          bottomSheetRef={fullNameSheetRef}
+          title="Edit Full Name"
+          fieldLabel="Full Name"
+          currentValue={userData?.username || ""}
+          placeholder="Enter your full name"
+          maxLength={50}
+          onSave={handleSaveFullName}
+          validate={validateFullName}
+          helperText="This is how your name will appear to others"
+        />
 
-      </ScrollView>
-    </View>
+        <EditFieldBottomSheet
+          bottomSheetRef={emailSheetRef}
+          title="Edit Email"
+          fieldLabel="Email Address"
+          currentValue={userData?.email || ""}
+          placeholder="Enter your email"
+          keyboardType="email-address"
+          onSave={handleSaveEmail}
+          validate={validateEmail}
+          helperText="You'll need to confirm your password to change your email"
+        />
+
+        <PasswordChangeBottomSheet bottomSheetRef={passwordSheetRef} />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -157,44 +400,51 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   profileSection: {
-    alignItems: 'center',
-    marginBottom: 40,
+    alignItems: "center",
+    marginBottom: 32,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
   },
   avatarText: {
-    color: 'white',
+    color: "white",
     fontSize: 40,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: "600",
+    opacity: 0.7,
   },
-  infoSection: {
-    marginBottom: 30,
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 16,
   },
   infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 16,
   },
   infoContent: {
@@ -202,52 +452,50 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 14,
   },
-  editIconBtn: {
-    padding: 8,
+  changePasswordButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
   },
-  editAvatarIcon: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  usernameEditContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    width: '80%',
-    alignSelf: 'center',
-  },
-  usernameInput: {
+  changePasswordText: {
     flex: 1,
-    width: '100%',
-    fontSize: 24,
-    fontWeight: 'bold',
-    paddingVertical: 0,
-    borderBottomWidth: 1,
-    borderColor: '#CCC',
+    fontSize: 16,
+    fontWeight: "500",
   },
-  saveButton: {
-    marginLeft: 10,
-    padding: 5,
+  passwordForm: {
+    padding: 16,
+    borderRadius: 12,
+    gap: 16,
   },
-  usernameDisplayContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  passwordActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
   },
-  editUsernameIcon: {
-    marginLeft: 10,
-    padding: 5,
+  passwordActionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
   },
-}); 
+  cancelButton: {
+    backgroundColor: "#E0E0E0",
+  },
+  cancelButtonText: {
+    color: "#333",
+    fontWeight: "600",
+  },
+  savePasswordButton: {},
+  savePasswordButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+});

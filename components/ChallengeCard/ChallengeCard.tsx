@@ -9,7 +9,7 @@ import { HabitTemplate } from '@/types';
 
 interface ChallengeCardProps {
   challenge: HabitTemplate;
-  onJoin?: (challenge: HabitTemplate) => Promise<void>;
+  onJoin?: (challenge: HabitTemplate) => void;
   isJoining?: boolean;
   isJoined?: boolean;
   featured?: boolean;

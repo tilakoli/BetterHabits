@@ -14,6 +14,7 @@ import { useColorScheme } from "@/utils/components/useColorScheme";
 import { ThemeProvider } from "@/utils/components/ThemeContext";
 import { AuthContextProvider, useAuth } from "@/providers/AuthProvider/useAuth";
 import Colors from "@/constants/Colors";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export {
   ErrorBoundary,
@@ -50,7 +51,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthContextProvider>
+         <GestureHandlerRootView style={{ flex: 1 }}>
         <RootLayoutNav />
+        </GestureHandlerRootView>
       </AuthContextProvider>
     </ThemeProvider>
   );

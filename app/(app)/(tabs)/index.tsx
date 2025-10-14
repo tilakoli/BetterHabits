@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, TouchableOpacity, FlatList, RefreshControl } from "react-native";
+import {
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+} from "react-native";
 import { Text, View } from "@/utils/components/Themed";
 import { useRouter } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/utils/components/useColorScheme";
-import { HabitCard, StreakCounter, ChallengeCard, DailyQuote, MotivationalGreeting } from "@/components";
+import {
+  HabitCard,
+  StreakCounter,
+  ChallengeCard,
+  DailyQuote,
+  MotivationalGreeting,
+} from "@/components";
 import { completeHabitForToday } from "@/utils/habitUtils";
 import { Challenge, HabitTemplate, HabitParticipation } from "@/types";
 import { useAuth } from "@/providers/AuthProvider/useAuth";
@@ -24,7 +35,10 @@ export default function HomeScreen() {
     useState<HabitTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [streakCount, setStreakCount] = useState(5);
+  const [userStats, setUserStats] = useState({
+    currentStreak: 0,
+    longestStreak: 0,
+  });
 
   // Load active challenge data
   const loadActiveChallenge = async () => {
@@ -38,6 +52,14 @@ export default function HomeScreen() {
       if (challenge) {
         const template = await habitService.getHabitById(challenge.habitId);
         setChallengeTemplate(template);
+      }
+
+      // Load user stats for streak
+      if (userData?.stats) {
+        setUserStats({
+          currentStreak: userData.stats.currentStreak || 0,
+          longestStreak: userData.stats.longestStreak || 0,
+        });
       }
     } catch (error) {
       console.error("Error loading active challenge:", error);
@@ -71,20 +93,36 @@ export default function HomeScreen() {
   const renderHeader = () => (
     <>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        
-        <MotivationalGreeting username={userData.username} />
-
-        <View style={[styles.streakBadge, { backgroundColor: `${colors.primary}15` }]}>
+        <MotivationalGreeting username={userData?.username} />
+        <StreakCounter
+          currentStreak={userStats.currentStreak}
+          longestStreak={userStats.longestStreak}
+          size="small"
+          showLabel={false}
+          animateChange={false}
+        />
+        {/*<View
+          style={[
+            styles.streakBadge,
+            { backgroundColor: `${colors.primary}15` },
+          ]}
+        >
           <FontAwesome name="fire" size={16} color={colors.primary} />
           <Text style={[styles.streakText, { color: colors.primary }]}>
             {streakCount}
-          </Text>
-        </View>
+          </Text> 
+         
+        </View>*/}
       </View>
 
-      <View style={[styles.divider, { backgroundColor: colors.border || '#E5E5E5' }]} />
+      <View
+        style={[
+          styles.divider,
+          { backgroundColor: colors.border || "#E5E5E5" },
+        ]}
+      />
 
-      <View style={[{backgroundColor: colors.background}]}>
+      <View style={[{ backgroundColor: colors.background }]}>
         <DailyQuote />
       </View>
     </>
@@ -106,19 +144,19 @@ export default function HomeScreen() {
         <View style={styles.activeChallengeContainer}>
           <ChallengeCard
             challenge={challengeTemplate}
-            onPress={() => router.push(`/habit/${challengeTemplate.id}`)}
+            onJoin={() => router.push(`/habit/${challengeTemplate.id}`)} // double check the change made here and why wasnt it throwing the error before?
+            // everything seem to be working before with onPress as well ?
             isJoined={true}
           />
         </View>
       );
     }
-
     return (
       <View style={styles.challengeButtonContainer}>
         <TouchableOpacity
           style={[
             styles.challengeButton,
-            { 
+            {
               backgroundColor: colors.primary,
               shadowColor: colors.primary,
             },
@@ -127,13 +165,11 @@ export default function HomeScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.buttonIconWrapper}>
-            <FontAwesome
-              name="trophy"
-              size={20}
-              color="white"
-            />
+            <FontAwesome name="trophy" size={20} color="white" />
           </View>
-          <Text style={styles.challengeButtonText}>Start Your First Challenge</Text>
+          <Text style={styles.challengeButtonText}>
+            Start Your First Challenge
+          </Text>
           <FontAwesome name="arrow-right" size={16} color="white" />
         </TouchableOpacity>
       </View>
@@ -141,14 +177,11 @@ export default function HomeScreen() {
   };
 
   const renderHabitItem = ({ item }: { item: Challenge }) => (
-    <HabitCard
-      habit={item}
-      onComplete={() => handleCompleteHabit(item.id)}
-    />
+    <HabitCard habit={item} onComplete={() => handleCompleteHabit(item.id)} />
   );
 
   return (
-    <View style={[styles.container, {backgroundColor: colors.background}]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={habits}
         renderItem={renderHabitItem}
@@ -186,19 +219,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  streakBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+  // streakBadge: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   paddingHorizontal: 16,
+  //   paddingVertical: 8,
+  //   borderRadius: 20,
+  //   gap: 6,
+  //   shadowColor: "#000",
+  //   shadowOffset: { width: 0, height: 2 },
+  //   shadowOpacity: 0.05,
+  //   shadowRadius: 4,
+  //   elevation: 2,
+  // },
   streakText: {
     fontSize: 16,
     fontWeight: "700",

@@ -13,6 +13,9 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { HabitTemplate, HabitParticipation, UserProfile, DailyProgress } from '@/types';
+
+import { calculateChallengeStreak, calculateLongestChallengeStreak, isWithinGracePeriod } from '@/utils/streakUtils';
+
 import * as Crypto from 'expo-crypto';
 
 const HABITS_COLLECTION = 'habits';
@@ -123,7 +126,9 @@ export const habitService = {
       totalDays: habitTemplate.duration,
       completionRate: 0,
       lastUpdated: startDate,
-      dailyProgress: {} // Will store date -> { completed: boolean, data?: any }
+      dailyProgress: {}, // Will store date -> { completed: boolean, data?: any }
+      currentStreak: 0,
+      longestStreak: 0,
     };
 
     // 1. Update user document
@@ -160,96 +165,140 @@ export const habitService = {
   },
 
   // Record daily progress (simplified for yes/no)
-  async recordDailyProgress(
-    userId: string,
-    participationId: string,
-    date: string, // YYYY-MM-DD format
-    completed: boolean,
-    additionalData?: any // For future challenge-specific data
-  ): Promise<{ success: boolean; error?: string; challengeCompleted?: boolean }> {
+ async recordDailyProgress(
+  userId: string,
+  participationId: string,
+  date: string, // YYYY-MM-DD format
+  completed: boolean,
+  additionalData?: any // For future challenge-specific data
+): Promise<{ success: boolean; error?: string; challengeCompleted?: boolean; streakMilestone?: number }> {
+  
+  try {
+    const userRef = doc(DB, 'users', userId);
+    const userSnap = await getDoc(userRef);
     
-    try {
-      const userRef = doc(DB, 'users', userId);
-      const userSnap = await getDoc(userRef);
-      
-      if (!userSnap.exists()) {
-        return { success: false, error: 'User not found' };
-      }
-
-      const userData = userSnap.data() as UserProfile;
-      const challenge = userData.habits?.[participationId];
-      
-      if (!challenge) {
-        return { success: false, error: 'Challenge not found' };
-      }
-
-      if (!challenge.isActive || challenge.isCompleted) {
-        return { success: false, error: 'Challenge is not active' };
-      }
-
-      // Update progress for the specific date
-   const progressEntry: DailyProgress = {
-  completed,
-  timestamp: Timestamp.now(),
-  ...(additionalData && { data: additionalData }) // Store challenge-specific data
-};
-      // Calculate new completion stats
-      const updatedDailyProgress = {
-        ...challenge.dailyProgress,
-        [date]: progressEntry
-      };
-
-      const completedDays = Object.values(updatedDailyProgress)
-        .filter((progress: any) => progress.completed).length;
-      
-      const newCompletionRate = Math.round((completedDays / challenge.totalDays) * 100);
-      
-      // Check if challenge is completed (last day + marked complete)
-      const today = new Date();
-      const challengeEndDate = challenge.endDate.toDate();
-      const isLastDay = today >= challengeEndDate;
-      const isChallengeCompleted = isLastDay && completed;
-
-      const updatePayload: any = {
-        [`habits.${participationId}.dailyProgress.${date}`]: progressEntry,
-        [`habits.${participationId}.totalCompletedDays`]: completedDays,
-        [`habits.${participationId}.completionRate`]: newCompletionRate,
-        [`habits.${participationId}.lastUpdated`]: Timestamp.now(),
-      };
-
-      // If challenge is completed, mark it as such
-      if (isChallengeCompleted) {
-        updatePayload[`habits.${participationId}.isCompleted`] = true;
-        updatePayload[`habits.${participationId}.isActive`] = false;
-        updatePayload[`habits.${participationId}.completedDate`] = Timestamp.now();
-        updatePayload['stats.currentActiveHabits'] = increment(-1);
-        updatePayload['stats.totalHabitsCompleted'] = increment(1);
-      }
-
-      await updateDoc(userRef, updatePayload);
-
-      // Update cross-reference document
-      const crossRefRef = doc(DB, USER_HABIT_PARTICIPATION_COLLECTION, `${userId}_${challenge.habitId}`);
-      await updateDoc(crossRefRef, {
-        completionRate: newCompletionRate,
-        lastActivity: Timestamp.now(),
-        ...(isChallengeCompleted && { 
-          isActive: false, 
-          isCompleted: true,
-          completedDate: Timestamp.now()
-        })
-      });
-
-      return { 
-        success: true, 
-        challengeCompleted: isChallengeCompleted 
-      };
-
-    } catch (error) {
-      console.error('Error recording progress:', error);
-      return { success: false, error: 'Failed to record progress.' };
+    if (!userSnap.exists()) {
+      return { success: false, error: 'User not found' };
     }
-  },
+
+    const userData = userSnap.data() as UserProfile;
+    const challenge = userData.habits?.[participationId];
+    
+    if (!challenge) {
+      return { success: false, error: 'Challenge not found' };
+    }
+
+    if (!challenge.isActive || challenge.isCompleted) {
+      return { success: false, error: 'Challenge is not active' };
+    }
+
+    // Update progress for the specific date
+    const progressEntry: DailyProgress = {
+      completed,
+      timestamp: Timestamp.now(),
+      ...(additionalData && { data: additionalData })
+    };
+
+    // Calculate new completion stats
+    const updatedDailyProgress = {
+      ...challenge.dailyProgress,
+      [date]: progressEntry
+    };
+
+    const completedDays = Object.values(updatedDailyProgress)
+      .filter((progress: any) => progress.completed).length;
+    
+    const newCompletionRate = Math.round((completedDays / challenge.totalDays) * 100);
+    
+    // Calculate streaks
+    const updatedParticipation = {
+      ...challenge,
+      dailyProgress: updatedDailyProgress
+    };
+    const newChallengeStreak = calculateChallengeStreak(updatedParticipation);
+    const newLongestStreak = Math.max(challenge.longestStreak || 0, newChallengeStreak);
+
+    // Calculate global streak
+    const userStats = userData.stats || {};
+    const lastActiveDate = userStats.lastActiveDate;
+    let newGlobalStreak = 0;
+    let streakMilestone = null;
+
+    if (completed) {
+      if (lastActiveDate && isWithinGracePeriod(lastActiveDate)) {
+        newGlobalStreak = (userStats.currentStreak || 0) + 1;
+      } else {
+        newGlobalStreak = 1;
+      }
+      
+      // Check for milestone
+      const milestones = [7, 14, 21, 30, 60, 90, 100];
+      if (milestones.includes(newGlobalStreak)) {
+        streakMilestone = newGlobalStreak;
+      }
+    } else {
+      newGlobalStreak = 0; // Reset on incomplete day
+    }
+    
+    // Check if challenge is completed (last day + marked complete)
+    const today = new Date();
+    const challengeEndDate = challenge.endDate.toDate();
+    const isLastDay = today >= challengeEndDate;
+    const isChallengeCompleted = isLastDay && completed;
+
+    const updatePayload: any = {
+      [`habits.${participationId}.dailyProgress.${date}`]: progressEntry,
+      [`habits.${participationId}.totalCompletedDays`]: completedDays,
+      [`habits.${participationId}.completionRate`]: newCompletionRate,
+      [`habits.${participationId}.lastUpdated`]: Timestamp.now(),
+      [`habits.${participationId}.currentStreak`]: newChallengeStreak,
+      [`habits.${participationId}.longestStreak`]: newLongestStreak,
+    };
+
+    // Update global streak stats
+    if (completed) {
+      updatePayload['stats.currentStreak'] = newGlobalStreak;
+      updatePayload['stats.longestStreak'] = Math.max(userStats.longestStreak || 0, newGlobalStreak);
+      updatePayload['stats.lastActiveDate'] = date;
+      updatePayload['stats.totalDaysTracked'] = increment(1);
+    } else {
+      updatePayload['stats.currentStreak'] = 0; // Reset global streak
+    }
+
+    // If challenge is completed, mark it as such
+    if (isChallengeCompleted) {
+      updatePayload[`habits.${participationId}.isCompleted`] = true;
+      updatePayload[`habits.${participationId}.isActive`] = false;
+      updatePayload[`habits.${participationId}.completedDate`] = Timestamp.now();
+      updatePayload['stats.currentActiveHabits'] = increment(-1);
+      updatePayload['stats.totalHabitsCompleted'] = increment(1);
+    }
+
+    await updateDoc(userRef, updatePayload);
+
+    // Update cross-reference document
+    const crossRefRef = doc(DB, USER_HABIT_PARTICIPATION_COLLECTION, `${userId}_${challenge.habitId}`);
+    await updateDoc(crossRefRef, {
+      completionRate: newCompletionRate,
+      lastActivity: Timestamp.now(),
+      ...(isChallengeCompleted && { 
+        isActive: false, 
+        isCompleted: true,
+        completedDate: Timestamp.now()
+      })
+    });
+
+    return { 
+      success: true, 
+      challengeCompleted: isChallengeCompleted,
+      streakMilestone: streakMilestone || undefined
+    };
+
+  } catch (error) {
+    console.error('Error recording progress:', error);
+    return { success: false, error: 'Failed to record progress.' };
+  }
+},
 
   // Get today's progress status for a challenge
   async getTodayProgressStatus(userId: string, participationId: string): Promise<{ hasProgressToday: boolean; completed?: boolean }> {

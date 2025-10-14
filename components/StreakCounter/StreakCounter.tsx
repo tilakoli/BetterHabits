@@ -5,22 +5,35 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/utils/components/useColorScheme';
 
 interface StreakCounterProps {
-  count: number;
+  currentStreak: number;
+  longestStreak?: number;
   size?: 'small' | 'medium' | 'large';
   showLabel?: boolean;
+  showLongest?: boolean;
   animateChange?: boolean;
 }
 
 const StreakCounter: React.FC<StreakCounterProps> = ({
-  count,
+  currentStreak,
+  longestStreak,
   size = 'medium',
   showLabel = true,
+  showLongest = false,
   animateChange = false,
 }) => {
   const colorScheme = useColorScheme() || 'light';
   const colors = Colors[colorScheme];
   
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  
+  // Get dynamic fire color based on streak
+  const getStreakColor = (streak: number) => {
+    if (streak === 0) return '#95a5a6';
+    if (streak < 7) return '#f39c12';
+    if (streak < 14) return '#e67e22';
+    if (streak < 21) return '#e74c3c';
+    return '#c0392b';
+  };
   
   // Sizes mapping for different components
   const sizeMap = {
@@ -45,7 +58,7 @@ const StreakCounter: React.FC<StreakCounterProps> = ({
   };
   
   useEffect(() => {
-    if (animateChange) {
+    if (animateChange && currentStreak > 0) {
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 1.3,
@@ -59,31 +72,39 @@ const StreakCounter: React.FC<StreakCounterProps> = ({
         }),
       ]).start();
     }
-  }, [count, animateChange, scaleAnim]);
+  }, [currentStreak, animateChange, scaleAnim]);
   
   return (
-    <View style={[styles.container, sizeMap[size].container]}>
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <FontAwesome 
-          name="fire" 
-          size={sizeMap[size].iconSize} 
-          color={colors.accent}
-          style={styles.icon}
-        />
-      </Animated.View>
-      <Animated.Text 
-        style={[
-          styles.countText, 
-          sizeMap[size].text,
-          { color: colors.text },
-          { transform: [{ scale: scaleAnim }] }
-        ]}
-      >
-        {count}
-      </Animated.Text>
-      {showLabel && (
-        <Text style={[styles.label, sizeMap[size].label, { color: colors.text }]}>
-          Day {count === 1 ? 'Streak' : 'Streak'}
+    <View>
+      <View style={[styles.container, sizeMap[size].container]}>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <FontAwesome 
+            name="fire" 
+            size={sizeMap[size].iconSize} 
+            color={getStreakColor(currentStreak)}
+            style={styles.icon}
+          />
+        </Animated.View>
+        <Animated.Text 
+          style={[
+            styles.countText, 
+            sizeMap[size].text,
+            { color: colors.text },
+            { transform: [{ scale: scaleAnim }] }
+          ]}
+        >
+          {currentStreak}
+        </Animated.Text>
+        {showLabel && (
+          <Text style={[styles.label, sizeMap[size].label, { color: colors.text }]}>
+            Day Streak
+          </Text>
+        )}
+      </View>
+      
+      {showLongest && longestStreak && longestStreak > currentStreak && (
+        <Text style={[styles.longestText, { color: colors.text }]}>
+          Best: {longestStreak} days
         </Text>
       )}
     </View>
@@ -109,6 +130,12 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: '500',
   },
+  longestText: {
+    fontSize: 11,
+    opacity: 0.5,
+    textAlign: 'center',
+    marginTop: 4,
+  },
 });
 
-export default StreakCounter; 
+export default StreakCounter;
